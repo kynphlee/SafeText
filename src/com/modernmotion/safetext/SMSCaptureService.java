@@ -23,7 +23,7 @@ public class SMSCaptureService extends Service {
 	private Looper serviceLooper;
 	private SMSCaptureHandler serviceHandler;
 
-	private int smsCount=0;
+	private int smsCount = 0;
 
 	private boolean receiverRegistered = false;
 	private final BroadcastReceiver smsReceiver = new BroadcastReceiver() {
