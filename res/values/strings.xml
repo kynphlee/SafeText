@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">SafeText</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="title_activity_stsignup">SafeText Registration</string>
+    <string name="safetext_summary">This mobile app monitors and changes text message privileges based on the speed at which a person is travelling.</string>
+    <string name="firstname">First Name</string>
+    <string name="lastname">Last Name</string>
+    <string name="email">Email Address</string>
+    <string name="tac">I agree to the Terms and Conditions</string>
+    <string name="activate">Activate</string>
+    <string name="st_logo">SafeText Logo</string>
+    <string name="title_activity_ststatus">SafeText Status</string>
+    <string name="st_service_status">Activation Status:</string>
+    <string name="st_service_status_enabled">Enabled</string>
+    <string name="st_service_status_disabled">Disabled</string>
+    <string name="st_sms_count_label">SMS Count: </string>
+    <string name="st_service_active_message">I\'m driving right now. I\'ll text you later.</string>
+    <string name="st_sms_sender_label_text">Sender: </string>
+    <string name="st_sms_message_label_text">Message: </string>
+
+</resources>

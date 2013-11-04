@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" >
+
+    <ImageView 
+        android:id="@+id/st_service_switch"
+        android:layout_width="128dp"
+        android:layout_height="128dp"
+        android:src="@drawable/st_logo_grey"
+        android:layout_centerInParent="true"
+        android:onClick="statusChange"/>
+    <TextView 
+        android:id="@+id/st_service_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/st_service_switch"
+        android:layout_centerHorizontal="true"
+        android:text="@string/st_service_status" />
+    <TextView 
+        android:id="@+id/st_service_status_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/st_service_status"
+        android:layout_centerHorizontal="true"
+        android:text="@string/st_service_status_disabled" />
+    <TextView
+        android:id="@+id/st_sms_count_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/st_service_status_indicator"
+        android:layout_alignLeft="@id/st_service_status"
+        android:text="@string/st_sms_count_label"/>
+    <TextView
+        android:id="@+id/st_sms_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/st_sms_count_label"
+        android:layout_below="@id/st_service_status_indicator"
+        android:text="0"/>
+
+    <TextView
+        android:id="@+id/st_sms_sender_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/st_sms_sender_label"
+        android:layout_alignBottom="@+id/st_sms_sender_label"
+        android:layout_toRightOf="@+id/st_sms_sender_label"
+        android:text="phone_number" />
+
+    <TextView
+        android:id="@+id/st_sms_sender_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/st_sms_count_label"
+        android:layout_toLeftOf="@+id/st_service_switch"
+        android:text="@string/st_sms_sender_label_text" />
+
+    <TextView
+        android:id="@+id/st_sms_message_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/st_sms_sender_label"
+        android:layout_below="@+id/st_sms_sender_value"
+        android:text="@string/st_sms_message_label_text" />
+
+    <TextView
+        android:id="@+id/st_sms_message_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/st_sms_sender_value"
+        android:layout_toRightOf="@+id/st_sms_message_label"
+        android:inputType="textMultiLine"
+        android:text="text_message" />
+
+</RelativeLayout>
