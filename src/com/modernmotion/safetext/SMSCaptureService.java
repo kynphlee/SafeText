@@ -19,7 +19,8 @@ import android.widget.Toast;
 public class SMSCaptureService extends Service {
 	private static final String ACTION_START_CAPTURE = "com.modernmotion.safetext.action.START_CAPTURE";
 	private static final String ACTION_STOP_CAPTURE = "com.modernmotion.safetext.action.STOP_CAPTURE";
-
+	public static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
+	
 	private Looper serviceLooper;
 	private SMSCaptureHandler serviceHandler;
 
@@ -35,7 +36,7 @@ public class SMSCaptureService extends Service {
 			String message = null;
 			SmsMessage[] messages = null;
 			
-			if (action.equals("android.provider.Telephony.SMS_RECEIVED")) {
+			if (action.equals(SMS_RECEIVED_ACTION)) {
 				Bundle bundle = intent.getExtras();
 				if (bundle != null) {
 					Object[] pdus = (Object[]) bundle.get("pdus");
@@ -74,21 +75,15 @@ public class SMSCaptureService extends Service {
 		public void handleMessage(Message msg) {
 			//	Start the SMS capture service here...
 			IntentFilter smsFilter = new IntentFilter();
-			smsFilter.addAction("android.provider.Telephony.SMS_RECEIVED");
+			smsFilter.addAction(SMS_RECEIVED_ACTION);
 			smsFilter.setPriority(Integer.MAX_VALUE);
 			
 			registerReceiver(smsReceiver, smsFilter);
-			//registerReceiver(smsReceiver, smsFilter, "android.permission.BROADCAST_SMS", null);
 			receiverRegistered = true;
 
 			Toast.makeText(getApplicationContext(),
 					"Service has now started...", Toast.LENGTH_SHORT).show();
 		}
-	}
-
-	@Override
-	public IBinder onBind(Intent intent) {
-		return null;
 	}
 
 	public static void startSMSCapture(Context context) {
@@ -136,5 +131,11 @@ public class SMSCaptureService extends Service {
 			unregisterReceiver(smsReceiver);
 		}
 		Toast.makeText(this, "Service stopped.", Toast.LENGTH_SHORT).show();
+	}
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

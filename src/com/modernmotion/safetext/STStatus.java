@@ -1,6 +1,7 @@
 package com.modernmotion.safetext;
 
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -13,23 +14,18 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
-public class STStatus extends Activity {
-
-	private SMSCaptureService mService;
-	private boolean serviceBound = false;
+public class STStatus extends Activity  {
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
 	private TextView activationIndicator, smsCount, senderValue, messageValue;
-	private int smsCounter = 0;
 
-	private String SENT = "SMS_SENT";
-	private String RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
+	// private String SENT = "SMS_SENT";
+	// private String RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
 
 	private static final String SERVICE_STATE = "serviceState";
-	private static final String RECEIVER_STATE = "receiverState"; 
-	
+	private static final String RECEIVER_STATE = "receiverState";
+
 	private boolean receiverRegistered = false;
 	private IntentFilter intentFilter = new IntentFilter("SMS_MESSAGE_RECEIVED");
 
@@ -41,13 +37,13 @@ public class STStatus extends Activity {
 		serviceSwitch = (ImageView) findViewById(R.id.st_service_switch);
 		smsCount = (TextView) (findViewById(R.id.st_sms_count));
 		activationIndicator = (TextView) findViewById(R.id.st_service_status_indicator);
-		senderValue = (TextView)findViewById(R.id.st_sms_sender_value);
-		messageValue = (TextView)findViewById(R.id.st_sms_message_value);
-		
+		senderValue = (TextView) findViewById(R.id.st_sms_sender_value);
+		messageValue = (TextView) findViewById(R.id.st_sms_message_value);
+
 		senderValue.setText("");
 		messageValue.setText("");
 		messageValue.setMovementMethod(new ScrollingMovementMethod());
-		
+
 		serviceSwitch.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -60,27 +56,23 @@ public class STStatus extends Activity {
 			}
 		});
 	}
-	
+
 	private BroadcastReceiver intentReceiver = new BroadcastReceiver() {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			handleSms(intent);
+			String action = intent.getAction();
+			if (action.equals("SMS_MESSAGE_RECEIVED")) {
+				int count = intent.getExtras().getInt("smsCount");
+				String message = intent.getExtras().getString("message");
+				String sender = intent.getExtras().getString("sender");
+
+				smsCount.setText(String.valueOf(count));
+				senderValue.setText(sender);
+				messageValue.setText(message);
+			}
 		}
 	};
-
-	private void handleSms(Intent intent) {
-		String action = intent.getAction();
-		if (action.equals("SMS_MESSAGE_RECEIVED")) {
-			int count = intent.getExtras().getInt("smsCount");
-			String message = intent.getExtras().getString("message");
-			String sender = intent.getExtras().getString("sender");
-			
-			smsCount.setText(String.valueOf(count));
-			senderValue.setText(sender);
-			messageValue.setText(message);
-		}
-	}
 
 	private boolean isEnabled() {
 		return serviceEnabled;
@@ -88,7 +80,7 @@ public class STStatus extends Activity {
 
 	private void setServiceState(boolean state) {
 		if (state) {
-			//	Start service
+			// Start service
 			serviceSwitch.setImageResource(R.drawable.st_logo_orange);
 			activationIndicator.setText(R.string.st_service_status_enabled);
 			SMSCaptureService.startSMSCapture(this);
@@ -96,7 +88,7 @@ public class STStatus extends Activity {
 			registerReceiver(intentReceiver, intentFilter);
 			receiverRegistered = state;
 		} else {
-			//	End service
+			// End service
 			serviceSwitch.setImageResource(R.drawable.st_logo_grey);
 			activationIndicator.setText(R.string.st_service_status_disabled);
 			SMSCaptureService.stopSMSCapture(this);
@@ -131,11 +123,11 @@ public class STStatus extends Activity {
 			activationIndicator.setText(R.string.st_service_status_disabled);
 		}
 	}
-	
+
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if (serviceEnabled){
+		if (serviceEnabled) {
 			registerReceiver(intentReceiver, intentFilter);
 			receiverRegistered = true;
 		}
@@ -149,7 +141,7 @@ public class STStatus extends Activity {
 			receiverRegistered = false;
 		}
 	}
-	
+
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();

@@ -17,8 +17,12 @@
     <string name="st_service_status_enabled">Enabled</string>
     <string name="st_service_status_disabled">Disabled</string>
     <string name="st_sms_count_label">SMS Count: </string>
-    <string name="st_service_active_message">I\'m driving right now. I\'ll text you later.</string>
+    <string name="st_service_active_message">I\'m driving right now. I\'ll text you later.\n\nBrought to you by SafeText.</string>
     <string name="st_sms_sender_label_text">Sender: </string>
     <string name="st_sms_message_label_text">Message: </string>
+    <string name="st_google_location_services_available">Google Location Services are available.</string>
+    <string name="st_google_location_services_connected">Google Location Services connected.</string>
+    <string name="st_google_location_services_disconnected">Google Location Services disconnected.</string>
+    <string name="title_activity_stutils">STUtils</string>
 
 </resources>

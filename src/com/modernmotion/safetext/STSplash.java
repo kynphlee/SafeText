@@ -1,9 +1,12 @@
 package com.modernmotion.safetext;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
+
 import java.lang.Thread;
 
 public class STSplash extends Activity {
@@ -12,7 +15,7 @@ public class STSplash extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.st_splash);
-		
+
 		new InitTask().execute();
 	}
 
@@ -33,13 +36,13 @@ public class STSplash extends Activity {
 			}
 			return doSignup;
 		}
-		
+
 		@Override
 		protected void onPostExecute(Boolean doSignup) {
 			super.onPostExecute(doSignup);
-			
+
 			Intent initializer;
-			
+
 			if (doSignup) {
 				initializer = new Intent(STSplash.this, STSignup.class);
 			} else {
