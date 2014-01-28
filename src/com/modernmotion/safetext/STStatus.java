@@ -11,6 +11,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageView;
@@ -48,6 +49,12 @@ public class STStatus extends Activity implements SensorEventListener {
 		senderValue.setText("");
 		messageValue.setText("");
 		messageValue.setMovementMethod(new ScrollingMovementMethod());
+		
+		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "acquired sensor manager");
+		
+		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+		Log.i(STConstants.DEBUG_ACCELEROMETER, "acquired linear accelerometer");
 
 		serviceSwitch.setOnClickListener(new OnClickListener() {
 
