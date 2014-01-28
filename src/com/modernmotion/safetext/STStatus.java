@@ -1,24 +1,29 @@
 package com.modernmotion.safetext;
 
 import android.app.Activity;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-public class STStatus extends Activity  {
+public class STStatus extends Activity implements SensorEventListener {
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
 	private TextView activationIndicator, smsCount, senderValue, messageValue;
+
+	private SensorManager sensorManager;
+	private Sensor accelerometer;
 
 	// private String SENT = "SMS_SENT";
 	// private String RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
@@ -55,6 +60,18 @@ public class STStatus extends Activity  {
 				}
 			}
 		});
+	}
+	
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onSensorChanged(SensorEvent event) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	private BroadcastReceiver intentReceiver = new BroadcastReceiver() {
