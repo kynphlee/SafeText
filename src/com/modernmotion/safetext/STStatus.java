@@ -24,7 +24,7 @@ public class STStatus extends Activity implements SensorEventListener {
 	private TextView activationIndicator, smsCount, senderValue, messageValue;
 
 	private SensorManager sensorManager;
-	private Sensor accelerometer;
+	private Sensor sensor;
 
 	// private String SENT = "SMS_SENT";
 	// private String RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
@@ -53,8 +53,12 @@ public class STStatus extends Activity implements SensorEventListener {
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "acquired sensor manager");
 		
-		accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-		Log.i(STConstants.DEBUG_ACCELEROMETER, "acquired linear accelerometer");
+		sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+		Log.i(STConstants.DEBUG_ACCELEROMETER, "sensor: " + sensor.getVendor() + ", type: " + sensor.getName());
+		
+		sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
+
 
 		serviceSwitch.setOnClickListener(new OnClickListener() {
 
@@ -155,6 +159,8 @@ public class STStatus extends Activity implements SensorEventListener {
 			registerReceiver(intentReceiver, intentFilter);
 			receiverRegistered = true;
 		}
+		sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "sensor registered");
 	}
 
 	@Override
@@ -164,13 +170,17 @@ public class STStatus extends Activity implements SensorEventListener {
 			unregisterReceiver(intentReceiver);
 			receiverRegistered = false;
 		}
+		sensorManager.unregisterListener(this);
+		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "sensor unregistered");
 	}
-
+	
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		if (receiverRegistered) {
 			unregisterReceiver(intentReceiver);
 		}
+		sensorManager.unregisterListener(this);
+		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "sensor unregistered");
 	}
 }
