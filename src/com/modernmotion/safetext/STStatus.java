@@ -17,7 +17,7 @@ import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-public class STStatus extends Activity implements SensorEventListener {
+public class STStatus extends Activity implements SensorEventListener{
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
@@ -81,8 +81,9 @@ public class STStatus extends Activity implements SensorEventListener {
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		// TODO Auto-generated method stub
-		
+		Log.i(STConstants.DEBUG_SENSOR, "x=" + event.values[0]);
+		Log.i(STConstants.DEBUG_SENSOR, "y=" + event.values[1]);
+		Log.i(STConstants.DEBUG_SENSOR, "z=" + event.values[2]);
 	}
 
 	private BroadcastReceiver intentReceiver = new BroadcastReceiver() {
@@ -171,7 +172,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			receiverRegistered = false;
 		}
 		sensorManager.unregisterListener(this);
-		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "sensor unregistered");
+		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "state: onPause(), sensor unregistered");
 	}
 	
 	@Override
@@ -181,6 +182,6 @@ public class STStatus extends Activity implements SensorEventListener {
 			unregisterReceiver(intentReceiver);
 		}
 		sensorManager.unregisterListener(this);
-		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "sensor unregistered");
+		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "state: onDestroy(),sensor unregistered");
 	}
 }
