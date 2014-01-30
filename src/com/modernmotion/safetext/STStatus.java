@@ -17,6 +17,9 @@ import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import static java.lang.Math.sqrt;
+import static java.lang.Math.pow;
+
 public class STStatus extends Activity implements SensorEventListener{
 
 	private boolean serviceEnabled;
@@ -81,9 +84,8 @@ public class STStatus extends Activity implements SensorEventListener{
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		Log.i(STConstants.DEBUG_SENSOR, "x=" + event.values[0]);
-		Log.i(STConstants.DEBUG_SENSOR, "y=" + event.values[1]);
-		Log.i(STConstants.DEBUG_SENSOR, "z=" + event.values[2]);
+		double length = sqrt(pow(event.values[0], 2.0) + pow(event.values[1], 2.0) + pow(event.values[2], 2.0));
+		Log.i(STConstants.DEBUG_STRING, Double.toString(length));
 	}
 
 	private BroadcastReceiver intentReceiver = new BroadcastReceiver() {
