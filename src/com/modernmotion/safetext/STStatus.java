@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import static java.lang.Math.sqrt;
 import static java.lang.Math.pow;
+import static com.modernmotion.safetext.STConstants.*;
 
 public class STStatus extends Activity implements SensorEventListener{
 
@@ -28,9 +29,12 @@ public class STStatus extends Activity implements SensorEventListener{
 
 	private SensorManager sensorManager;
 	private Sensor sensor;
+	private boolean isSensorRegistered;
 
 	// private String SENT = "SMS_SENT";
 	// private String RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
+	
+	private double acceleration;
 
 	private static final String SERVICE_STATE = "serviceState";
 	private static final String RECEIVER_STATE = "receiverState";
@@ -54,14 +58,13 @@ public class STStatus extends Activity implements SensorEventListener{
 		messageValue.setMovementMethod(new ScrollingMovementMethod());
 		
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "acquired sensor manager");
+		Log.i(DEBUG_SENSOR_MANAGER, "acquired sensor manager");
 		
 		sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-		Log.i(STConstants.DEBUG_ACCELEROMETER, "sensor: " + sensor.getVendor() + ", type: " + sensor.getName());
+		Log.i(DEBUG_ACCELEROMETER, "sensor: " + sensor.getVendor() + ", type: " + sensor.getName());
 		
-		sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
-		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
-
+		isSensorRegistered = sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+		Log.i(DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
 
 		serviceSwitch.setOnClickListener(new OnClickListener() {
 
@@ -84,8 +87,8 @@ public class STStatus extends Activity implements SensorEventListener{
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		double length = sqrt(pow(event.values[0], 2.0) + pow(event.values[1], 2.0) + pow(event.values[2], 2.0));
-		Log.i(STConstants.DEBUG_STRING, Double.toString(length));
+		acceleration = sqrt(pow(event.values[0], 2.0) + pow(event.values[1], 2.0) + pow(event.values[2], 2.0));
+		Log.i(DEBUG_STRING, Double.toString(acceleration));
 	}
 
 	private BroadcastReceiver intentReceiver = new BroadcastReceiver() {
@@ -162,8 +165,8 @@ public class STStatus extends Activity implements SensorEventListener{
 			registerReceiver(intentReceiver, intentFilter);
 			receiverRegistered = true;
 		}
-		sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
-		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "sensor registered");
+		isSensorRegistered = sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+		Log.i(DEBUG_SENSOR_MANAGER, "sensor registered");
 	}
 
 	@Override
@@ -174,7 +177,8 @@ public class STStatus extends Activity implements SensorEventListener{
 			receiverRegistered = false;
 		}
 		sensorManager.unregisterListener(this);
-		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "state: onPause(), sensor unregistered");
+		isSensorRegistered = false;
+		Log.i(DEBUG_SENSOR_MANAGER, "state: onPause(), sensor unregistered");
 	}
 	
 	@Override
@@ -184,6 +188,7 @@ public class STStatus extends Activity implements SensorEventListener{
 			unregisterReceiver(intentReceiver);
 		}
 		sensorManager.unregisterListener(this);
-		Log.i(STConstants.DEBUG_SENSOR_MANAGER, "state: onDestroy(),sensor unregistered");
+		isSensorRegistered = false;
+		Log.i(DEBUG_SENSOR_MANAGER, "state: onDestroy(),sensor unregistered");
 	}
 }
