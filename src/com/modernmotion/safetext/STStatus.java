@@ -1,5 +1,7 @@
 package com.modernmotion.safetext;
 
+import java.util.Date;
+
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -16,12 +18,11 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import static java.lang.Math.sqrt;
 import static java.lang.Math.pow;
 import static com.modernmotion.safetext.STConstants.*;
 
-public class STStatus extends Activity implements SensorEventListener{
+public class STStatus extends Activity implements SensorEventListener {
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
@@ -31,16 +32,19 @@ public class STStatus extends Activity implements SensorEventListener{
 	private Sensor sensor;
 	private boolean isSensorRegistered;
 
-	// private String SENT = "SMS_SENT";
-	// private String RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
-	
+	// TODO: Implement Acceleration-based switch variables
 	private double acceleration;
+	private double currentSpeed;
+	private final double threshold = 4.47;
+	private long timeStamp;
+	private static final float NS2S = 1.0f / 1000000000.0f;
 
 	private static final String SERVICE_STATE = "serviceState";
 	private static final String RECEIVER_STATE = "receiverState";
 
 	private boolean receiverRegistered = false;
-	private IntentFilter intentFilter = new IntentFilter("SMS_MESSAGE_RECEIVED");
+	private IntentFilter smsIntentFilter = new IntentFilter(
+			"SMS_MESSAGE_RECEIVED");
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -56,16 +60,20 @@ public class STStatus extends Activity implements SensorEventListener{
 		senderValue.setText("");
 		messageValue.setText("");
 		messageValue.setMovementMethod(new ScrollingMovementMethod());
-		
+
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		Log.i(DEBUG_SENSOR_MANAGER, "acquired sensor manager");
-		
-		sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-		Log.i(DEBUG_ACCELEROMETER, "sensor: " + sensor.getVendor() + ", type: " + sensor.getName());
-		
-		isSensorRegistered = sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+
+		sensor = sensorManager
+				.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+		Log.i(DEBUG_ACCELEROMETER, "sensor: " + sensor.getVendor() + ", type: "
+				+ sensor.getName());
+
+		isSensorRegistered = sensorManager.registerListener(this, sensor,
+				SensorManager.SENSOR_DELAY_NORMAL);
 		Log.i(DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
 
+		// The Manual Switch
 		serviceSwitch.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -78,20 +86,32 @@ public class STStatus extends Activity implements SensorEventListener{
 			}
 		});
 	}
-	
+
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		acceleration = sqrt(pow(event.values[0], 2.0) + pow(event.values[1], 2.0) + pow(event.values[2], 2.0));
-		Log.i(DEBUG_STRING, Double.toString(acceleration));
+		// The Acceleration-based Switch
+		acceleration = sqrt(pow(event.values[0], 2) + pow(event.values[1], 2)
+				+ pow(event.values[2], 2));
+		if (acceleration <= threshold) {
+			Log.i(DEBUG_STRING + "Total Acceleration", "a = " + acceleration
+					+ ", t = " + new Date(event.timestamp).toString());
+			if (!isEnabled()) {
+				setServiceState(true);
+			}
+		} else {
+			Log.i(DEBUG_STRING + "Total Acceleration", "Threshold reached: "
+					+ acceleration);
+			setServiceState(false);
+		}
 	}
 
-	private BroadcastReceiver intentReceiver = new BroadcastReceiver() {
+	private BroadcastReceiver smsIntentReceiver = new BroadcastReceiver() {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -119,7 +139,7 @@ public class STStatus extends Activity implements SensorEventListener{
 			activationIndicator.setText(R.string.st_service_status_enabled);
 			SMSCaptureService.startSMSCapture(this);
 			serviceEnabled = state;
-			registerReceiver(intentReceiver, intentFilter);
+			registerReceiver(smsIntentReceiver, smsIntentFilter);
 			receiverRegistered = state;
 		} else {
 			// End service
@@ -127,7 +147,7 @@ public class STStatus extends Activity implements SensorEventListener{
 			activationIndicator.setText(R.string.st_service_status_disabled);
 			SMSCaptureService.stopSMSCapture(this);
 			serviceEnabled = state;
-			unregisterReceiver(intentReceiver);
+			unregisterReceiver(smsIntentReceiver);
 			receiverRegistered = state;
 		}
 	}
@@ -149,7 +169,7 @@ public class STStatus extends Activity implements SensorEventListener{
 			serviceSwitch.setImageResource(R.drawable.st_logo_orange);
 			activationIndicator.setText(R.string.st_service_status_enabled);
 			if (!receiverRegistered) {
-				registerReceiver(intentReceiver, intentFilter);
+				registerReceiver(smsIntentReceiver, smsIntentFilter);
 				receiverRegistered = true;
 			}
 		} else {
@@ -162,33 +182,37 @@ public class STStatus extends Activity implements SensorEventListener{
 	protected void onResume() {
 		super.onResume();
 		if (serviceEnabled) {
-			registerReceiver(intentReceiver, intentFilter);
+			registerReceiver(smsIntentReceiver, smsIntentFilter);
 			receiverRegistered = true;
 		}
-		isSensorRegistered = sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+		isSensorRegistered = sensorManager.registerListener(this, sensor,
+				SensorManager.SENSOR_DELAY_NORMAL);
 		Log.i(DEBUG_SENSOR_MANAGER, "sensor registered");
+		Log.i(DEBUG_SENSOR_MANAGER, "  *** sensor start ***  ");
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
 		if (receiverRegistered) {
-			unregisterReceiver(intentReceiver);
+			unregisterReceiver(smsIntentReceiver);
 			receiverRegistered = false;
 		}
 		sensorManager.unregisterListener(this);
 		isSensorRegistered = false;
+		Log.i(DEBUG_SENSOR_MANAGER, "  *** sensor stop ***  ");
 		Log.i(DEBUG_SENSOR_MANAGER, "state: onPause(), sensor unregistered");
 	}
-	
+
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		if (receiverRegistered) {
-			unregisterReceiver(intentReceiver);
+			unregisterReceiver(smsIntentReceiver);
 		}
 		sensorManager.unregisterListener(this);
 		isSensorRegistered = false;
+		Log.i(DEBUG_SENSOR_MANAGER, "  *** sensor end ***  ");
 		Log.i(DEBUG_SENSOR_MANAGER, "state: onDestroy(),sensor unregistered");
 	}
 }
