@@ -81,8 +81,8 @@ public class SMSCaptureService extends Service {
 			registerReceiver(smsReceiver, smsFilter);
 			receiverRegistered = true;
 
-			Toast.makeText(getApplicationContext(),
-					"Service has now started...", Toast.LENGTH_SHORT).show();
+//			Toast.makeText(getApplicationContext(),
+//					"Service has now started...", Toast.LENGTH_SHORT).show();
 		}
 	}
 
@@ -130,7 +130,7 @@ public class SMSCaptureService extends Service {
 		if (receiverRegistered) {
 			unregisterReceiver(smsReceiver);
 		}
-		Toast.makeText(this, "Service stopped.", Toast.LENGTH_SHORT).show();
+//		Toast.makeText(this, "Service stopped.", Toast.LENGTH_SHORT).show();
 	}
 
 	@Override

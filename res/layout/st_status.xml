@@ -8,8 +8,7 @@
         android:layout_width="128dp"
         android:layout_height="128dp"
         android:src="@drawable/st_logo_grey"
-        android:layout_centerInParent="true"
-        android:onClick="statusChange"/>
+        android:layout_centerInParent="true"/>
     <TextView 
         android:id="@+id/st_service_status"
         android:layout_width="wrap_content"
