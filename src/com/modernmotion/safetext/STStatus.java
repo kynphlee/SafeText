@@ -1,8 +1,15 @@
 package com.modernmotion.safetext;
 
-import java.util.Date;
+import static com.modernmotion.safetext.STConstants.DEBUG_ACCELEROMETER;
+import static com.modernmotion.safetext.STConstants.DEBUG_SENSOR_MANAGER;
+import static com.modernmotion.safetext.STConstants.DEBUG_STRING;
+import static com.modernmotion.safetext.util.STParameters.ST_THRESHOLD;
+import static java.lang.Math.pow;
+import static java.lang.Math.sqrt;
 
-import com.modernmotion.safetext.domain.SMSProperties;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -17,14 +24,11 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
-import static java.lang.Math.sqrt;
-import static java.lang.Math.pow;
-import static com.modernmotion.safetext.STConstants.*;
-import static com.modernmotion.safetext.util.STAttributes.ST_THRESHOLD;
+
+import com.modernmotion.safetext.domain.SMSProperties;
+import com.modernmotion.safetext.util.MonitorParameters;
 
 public class STStatus extends Activity implements SensorEventListener {
 
@@ -33,11 +37,12 @@ public class STStatus extends Activity implements SensorEventListener {
 	private TextView activationIndicator, smsCount, senderValue, messageValue;
 
 	private SensorManager sensorManager;
-	private Sensor sensor;
-	private boolean isSensorRegistered;
+	private Sensor linearSensor;
+	private static boolean sessionStarted = false;
 
 	// TODO: Implement Acceleration-based switch variables
 	private double acceleration;
+	private float[] values;
 	private double accel_prev;
 	private double threshold;
 	private long timeStamp;
@@ -47,7 +52,8 @@ public class STStatus extends Activity implements SensorEventListener {
 	private static final String RECEIVER_STATE = "receiverState";
 
 	private boolean receiverRegistered = false;
-	private IntentFilter smsIntentFilter = new IntentFilter("SMS_MESSAGE_RECEIVED");
+	private IntentFilter smsIntentFilter = new IntentFilter(
+			"SMS_MESSAGE_RECEIVED");
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -75,15 +81,14 @@ public class STStatus extends Activity implements SensorEventListener {
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		Log.i(DEBUG_SENSOR_MANAGER, "acquired sensor manager");
 
-		sensor = sensorManager
+		linearSensor = sensorManager
 				.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-		Log.i(DEBUG_ACCELEROMETER, "sensor: " + sensor.getVendor() + ", type: "
-				+ sensor.getName());
+		Log.i(DEBUG_ACCELEROMETER, "sensor: " + linearSensor.getVendor()
+				+ ", type: " + linearSensor.getName());
 
-		isSensorRegistered = sensorManager.registerListener(this, sensor,
+		sensorManager.registerListener(this, linearSensor,
 				SensorManager.SENSOR_DELAY_NORMAL);
 		Log.i(DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
-
 	}
 
 	@Override
@@ -94,88 +99,77 @@ public class STStatus extends Activity implements SensorEventListener {
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		/* TODO:Accelerometer Sensor
-		 * 1) Create an AsyncTask class to implement the 3 minute scan 
-		 * window (SMSSession). Potential Types are 
-		 * AsyncTask<SensorEvent, Void, Boolean>,
-		 * AsyncTask<STProperties, Void, Boolean>, 
-		 * AsyncTask<Double, Void, Boolean>.
-		 * 
-		 * 	1a) Compute the acceleration over time as the cumulative sum 
-		 * 		of differences. Example:
-		 * 		accelCumulative += (acceleration - prevAcceleration)
-		 * 
-		 * 	1b)	After 3 minutes (180s), if the cumulative acceleration
-		 * 		exceeds the threshold, continue SMSSession by 
-		 * 		instantiating a new SMSSession.
-		 */
+		values = event.values.clone();
 		
-		if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-			
-			acceleration = sqrt(pow(event.values[0], 2) + pow(event.values[1], 2)
-					+ pow(event.values[2], 2));
-			
-			if (acceleration >= ST_THRESHOLD) {
-				SMSProperties properties = SMSProperties.builder()
-						.setAcceleration(acceleration)
-						.setThreshold(ST_THRESHOLD)
-						.build();
-				SMSSession scanSession = new SMSSession(properties);
-				scanSession.execute(properties);
+		acceleration = sqrt(pow(values[0], 2) + pow(values[1], 2)
+				+ pow(values[2], 2));
+
+		if (acceleration >= ST_THRESHOLD) {
+			Log.d(DEBUG_STRING, "Threshold reached.");
+			if (!sessionStarted) {
+				sessionStarted = true;
+//				SMSProperties properties = SMSProperties.builder()
+//						.setAcceleration(acceleration).setSensor(linearSensor)
+//						.setSensorManager(sensorManager)
+//						.setContext(getApplicationContext()).build();
+//				SMSMonitor smsMonitor = new SMSMonitor();
+//				sessionStarted = (smsMonitor.execute(properties) != null) ? true
+//						: false;
+				Log.d(DEBUG_STRING, "Monitor started.");
+			} else {
 				
-				// ------------ LEGACY START ------------------------
-				long timeStamp = event.timestamp;
-				double accelSum = 0;
-
-				while ((event.timestamp - timeStamp) < 180) {
-					double accelDiff = acceleration - accelSum;
-					accelSum += accelDiff;
-				}
-
-				// The Manual Switch Logic
-				if (!isEnabled()) {
-					setServiceState(true);
-				} else {
-					if (isEnabled()) {
-						setServiceState(false);
-					}
-				}
-
-				// Update global variables
-				accel_prev = acceleration;
-				// ------------ LEGACY END ------------------------
 			}
 		}
 	}
-	
-	private class SMSSession extends AsyncTask<SMSProperties, Void, Boolean> implements SensorEventListener{
 
-		private boolean isReceiverRegistered = false;
-		
+	// ------------ LEGACY START ------------------------
+	// long timeStamp = event.timestamp;
+	// double accelSum = 0;
+	//
+	// while ((event.timestamp - timeStamp) < 180) {
+	// double accelDiff = acceleration - accelSum;
+	// accelSum += accelDiff;
+	// }
+	//
+	// // The Manual Switch Logic
+	// if (!isEnabled()) {
+	// setServiceState(true);
+	// } else {
+	// if (isEnabled()) {
+	// setServiceState(false);
+	// }
+	// }
+
+	// Update global variables
+	// accel_prev = acceleration;
+	// ------------ LEGACY END ------------------------
+
+	/*
+	 * TODO:Accelerometer Sensor 1.) Create an AsyncTask class to implement the
+	 * 3 minute scan window (SMSSession). Potential Types are
+	 * AsyncTask<SensorEvent, Void, Boolean>, AsyncTask<STProperties,
+	 * Void,Boolean>, and AsyncTask<Double, Void, Boolean>.
+	 * 
+	 * 1.a.) Create a class SMSMonitor that can sequentially run SMSSession
+	 * threads in 3 minute intervals. For each SMSSession thread:
+	 * 
+	 * 1.a.1.) Compute the acceleration over time as the cumulative sum of
+	 * differences. Example: accelCumulative += (acceleration -
+	 * prevAcceleration) 1.a.2.)
+	 * 
+	 * 1.b.) After 3 minutes (180s), if the cumulative acceleration exceeds the
+	 * threshold, continue SMSSession by instantiating a new SMSSession.
+	 */
+
+	private class SMSMonitor extends AsyncTask<SMSProperties, Void, Boolean> {
+
 		@Override
 		protected Boolean doInBackground(SMSProperties... params) {
+			Log.d(DEBUG_STRING, "....now in SMSMonitor.doInBackground()...");
 			SMSProperties properties = params[0];
-			registerReceiver(properties.getReceiver(), properties.getReceiverFilter());
-			isReceiverRegistered = true;
-			
-			while (isReceiverRegistered) {
-				
-			}
-			return null;
-		}
 
-		@Override
-		public void onSensorChanged(SensorEvent event) {
-			if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-				
-			}
 			
-		}
-
-		@Override
-		public void onAccuracyChanged(Sensor sensor, int accuracy) {
-			// TODO Auto-generated method stubs
-			
+			return true;
 		}
 	}
 
@@ -205,6 +199,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			// Start service
 			serviceSwitch.setImageResource(R.drawable.st_logo_orange);
 			activationIndicator.setText(R.string.st_service_status_enabled);
+			
 			SMSCaptureService.startSMSCapture(this);
 			serviceEnabled = state;
 			registerReceiver(smsIntentReceiver, smsIntentFilter);
@@ -213,6 +208,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			// End service
 			serviceSwitch.setImageResource(R.drawable.st_logo_grey);
 			activationIndicator.setText(R.string.st_service_status_disabled);
+			
 			SMSCaptureService.stopSMSCapture(this);
 			serviceEnabled = state;
 			unregisterReceiver(smsIntentReceiver);
@@ -253,10 +249,10 @@ public class STStatus extends Activity implements SensorEventListener {
 			registerReceiver(smsIntentReceiver, smsIntentFilter);
 			receiverRegistered = true;
 		}
-		isSensorRegistered = sensorManager.registerListener(this, sensor,
+		sensorManager.registerListener(this, linearSensor,
 				SensorManager.SENSOR_DELAY_NORMAL);
-		Log.i(DEBUG_SENSOR_MANAGER, "sensor registered");
-		Log.i(DEBUG_SENSOR_MANAGER, "  *** sensor start ***  ");
+		Log.d(DEBUG_SENSOR_MANAGER, "sensor registered");
+		Log.d(DEBUG_SENSOR_MANAGER, "  *** sensor start ***  ");
 	}
 
 	@Override
@@ -267,9 +263,8 @@ public class STStatus extends Activity implements SensorEventListener {
 			receiverRegistered = false;
 		}
 		sensorManager.unregisterListener(this);
-		isSensorRegistered = false;
-		Log.i(DEBUG_SENSOR_MANAGER, "  *** sensor stop ***  ");
-		Log.i(DEBUG_SENSOR_MANAGER, "state: onPause(), sensor unregistered");
+		Log.d(DEBUG_SENSOR_MANAGER, "  *** sensor stop ***  ");
+		Log.d(DEBUG_SENSOR_MANAGER, "state: onPause(), sensor unregistered");
 	}
 
 	@Override
@@ -279,8 +274,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			unregisterReceiver(smsIntentReceiver);
 		}
 		sensorManager.unregisterListener(this);
-		isSensorRegistered = false;
-		Log.i(DEBUG_SENSOR_MANAGER, "  *** sensor end ***  ");
-		Log.i(DEBUG_SENSOR_MANAGER, "state: onDestroy(),sensor unregistered");
+		Log.d(DEBUG_SENSOR_MANAGER, "  *** sensor end ***  ");
+		Log.d(DEBUG_SENSOR_MANAGER, "state: onDestroy(),sensor unregistered");
 	}
 }

@@ -27,6 +27,51 @@ public class SMSCaptureService extends Service {
 	private int smsCount = 0;
 
 	private boolean receiverRegistered = false;
+	
+	@Override
+	public void onCreate() {
+		HandlerThread stServiceThread = new HandlerThread(
+				"SafeTextServiceThread", Process.THREAD_PRIORITY_BACKGROUND);
+		stServiceThread.start();
+
+		serviceLooper = stServiceThread.getLooper();
+		serviceHandler = new SMSCaptureHandler(serviceLooper);
+	}
+
+	@Override
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		if (intent != null) {
+			String action = intent.getAction();
+			if (action.equals(ACTION_START_CAPTURE)) {
+				Message message = serviceHandler.obtainMessage();
+				serviceHandler.sendMessage(message);
+			} else if (action.equals(ACTION_STOP_CAPTURE)) {
+				Intent stopCaptureServiceIntent = new Intent(this, SMSCaptureService.class);
+				unregisterReceiver(smsReceiver);
+				receiverRegistered = false;
+				stopService(stopCaptureServiceIntent);
+			}
+		}
+		return START_NOT_STICKY;
+	}
+
+	private final class SMSCaptureHandler extends Handler {
+		public SMSCaptureHandler(Looper looper) {
+			super(looper);
+		}
+
+		@Override
+		public void handleMessage(Message msg) {
+			//	Start the SMS capture service here...
+			IntentFilter smsFilter = new IntentFilter();
+			smsFilter.addAction(SMS_RECEIVED_ACTION);
+			smsFilter.setPriority(Integer.MAX_VALUE);
+			
+			registerReceiver(smsReceiver, smsFilter);
+			receiverRegistered = true;
+		}
+	}
+	
 	private final BroadcastReceiver smsReceiver = new BroadcastReceiver() {
 
 		@Override
@@ -66,26 +111,6 @@ public class SMSCaptureService extends Service {
 		}
 	};
 
-	private final class SMSCaptureHandler extends Handler {
-		public SMSCaptureHandler(Looper looper) {
-			super(looper);
-		}
-
-		@Override
-		public void handleMessage(Message msg) {
-			//	Start the SMS capture service here...
-			IntentFilter smsFilter = new IntentFilter();
-			smsFilter.addAction(SMS_RECEIVED_ACTION);
-			smsFilter.setPriority(Integer.MAX_VALUE);
-			
-			registerReceiver(smsReceiver, smsFilter);
-			receiverRegistered = true;
-
-//			Toast.makeText(getApplicationContext(),
-//					"Service has now started...", Toast.LENGTH_SHORT).show();
-		}
-	}
-
 	public static void startSMSCapture(Context context) {
 		Intent intent = new Intent(context, SMSCaptureService.class);
 		intent.setAction(ACTION_START_CAPTURE);
@@ -99,43 +124,14 @@ public class SMSCaptureService extends Service {
 	}
 
 	@Override
-	public void onCreate() {
-		HandlerThread stServiceThread = new HandlerThread(
-				"SafeTextServiceThread", Process.THREAD_PRIORITY_BACKGROUND);
-		stServiceThread.start();
-
-		serviceLooper = stServiceThread.getLooper();
-		serviceHandler = new SMSCaptureHandler(serviceLooper);
-	}
-
-	@Override
-	public int onStartCommand(Intent intent, int flags, int startId) {
-		if (intent != null) {
-			String action = intent.getAction();
-			if (action.equals(ACTION_START_CAPTURE)) {
-				Message message = serviceHandler.obtainMessage();
-				serviceHandler.sendMessage(message);
-			} else if (action.equals(ACTION_STOP_CAPTURE)) {
-				Intent stopCaptureServiceIntent = new Intent(this, SMSCaptureService.class);
-				unregisterReceiver(smsReceiver);
-				receiverRegistered = false;
-				stopService(stopCaptureServiceIntent);
-			}
-		}
-		return START_NOT_STICKY;
-	}
-
-	@Override
 	public void onDestroy() {
 		if (receiverRegistered) {
 			unregisterReceiver(smsReceiver);
 		}
-//		Toast.makeText(this, "Service stopped.", Toast.LENGTH_SHORT).show();
 	}
 
 	@Override
 	public IBinder onBind(Intent intent) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 }
