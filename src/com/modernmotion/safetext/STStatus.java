@@ -3,10 +3,11 @@ package com.modernmotion.safetext;
 import static com.modernmotion.safetext.STConstants.DEBUG_ACCELEROMETER;
 import static com.modernmotion.safetext.STConstants.DEBUG_SENSOR_MANAGER;
 import static com.modernmotion.safetext.STConstants.DEBUG_STRING;
-import static com.modernmotion.safetext.util.STParameters.ST_THRESHOLD;
+import static com.modernmotion.safetext.util.STParameters.*;
 import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
 
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -38,14 +39,15 @@ public class STStatus extends Activity implements SensorEventListener {
 
 	private SensorManager sensorManager;
 	private Sensor linearSensor;
-	private static boolean sessionStarted = false;
+	private static boolean sessionState = false;
 
 	// TODO: Implement Acceleration-based switch variables
 	private double acceleration;
 	private float[] values;
 	private double accel_prev;
 	private double threshold;
-	private long timeStamp;
+	private long previousTimestamp;
+	private float durationTime;
 	private static float NS2S;
 
 	private static final String SERVICE_STATE = "serviceState";
@@ -72,7 +74,6 @@ public class STStatus extends Activity implements SensorEventListener {
 
 		// Constants
 		NS2S = 1.0f / 1000000000.0f;
-		threshold = 0.447;
 
 		// Variables
 		acceleration = 0.0;
@@ -94,30 +95,68 @@ public class STStatus extends Activity implements SensorEventListener {
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
 		// TODO Auto-generated method stub
-
 	}
+	
+	/*
+	 * TODO:Accelerometer Sensor 1.) Create a 3 minute scan window (SMSSession). 
+	 * 1.a.) Compute the acceleration over time as the cumulative sum of
+	 * differences. 
+	 * Example: accelCumulative += (acceleration - prevAcceleration)
+	 * 
+	 * 1.b.) After 3 minutes (180s), if the cumulative acceleration exceeds the
+	 * threshold, continue SMSSession by instantiating a new SMSSession.
+	 */
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
+		final String TAG = "STMotionSensor";
+		Calendar cal = Calendar.getInstance();
+		
 		values = event.values.clone();
 		
 		acceleration = sqrt(pow(values[0], 2) + pow(values[1], 2)
 				+ pow(values[2], 2));
 
 		if (acceleration >= ST_THRESHOLD) {
-			Log.d(DEBUG_STRING, "Threshold reached.");
-			if (!sessionStarted) {
-				sessionStarted = true;
-//				SMSProperties properties = SMSProperties.builder()
-//						.setAcceleration(acceleration).setSensor(linearSensor)
-//						.setSensorManager(sensorManager)
-//						.setContext(getApplicationContext()).build();
-//				SMSMonitor smsMonitor = new SMSMonitor();
-//				sessionStarted = (smsMonitor.execute(properties) != null) ? true
-//						: false;
-				Log.d(DEBUG_STRING, "Monitor started.");
-			} else {
+			Log.d(TAG, "Threshold reached.");
+			if (!sessionState) {
+				Log.d(TAG, "Monitor inactive. Starting...");
 				
+				sessionState = true;
+				previousTimestamp = cal.getTimeInMillis();
+				Log.d(TAG, "current threshold timestamp: " + previousTimestamp);
+				
+				setServiceState(sessionState);
+				Log.d(TAG, "Monitor started.");
+			} else {
+				// TODO: Monitor the acceleration for a 3 minute duration
+				double accelSum = acceleration;
+				double accelDiff = 0.0;
+				
+				durationTime = previousTimestamp * NS2S;
+				Log.d(TAG, "Initial duration time: " + durationTime);
+				while (durationTime < SCAN_WINDOW) {
+					accelDiff = acceleration - accelDiff;
+					accelSum += accelDiff;
+					
+					Log.d(TAG,"current threshold timestamp: " + previousTimestamp);
+					Log.d(TAG,"acceleration difference: " + accelDiff);
+					Log.d(TAG,"cumulative acceleration: " + accelSum);
+					
+					if (durationTime >= SCAN_WINDOW) {
+						if (accelSum >= ST_THRESHOLD) {
+							durationTime = 0;
+							previousTimestamp = event.timestamp;
+							continue;
+						} else {
+							sessionState = false;
+							setServiceState(sessionState);
+							break;
+						}
+					}
+					durationTime = (cal.getTimeInMillis() - previousTimestamp) * NS2S;
+					Log.d(TAG, "Current duration time: " + durationTime);
+				}
 			}
 		}
 	}
@@ -143,23 +182,6 @@ public class STStatus extends Activity implements SensorEventListener {
 	// Update global variables
 	// accel_prev = acceleration;
 	// ------------ LEGACY END ------------------------
-
-	/*
-	 * TODO:Accelerometer Sensor 1.) Create an AsyncTask class to implement the
-	 * 3 minute scan window (SMSSession). Potential Types are
-	 * AsyncTask<SensorEvent, Void, Boolean>, AsyncTask<STProperties,
-	 * Void,Boolean>, and AsyncTask<Double, Void, Boolean>.
-	 * 
-	 * 1.a.) Create a class SMSMonitor that can sequentially run SMSSession
-	 * threads in 3 minute intervals. For each SMSSession thread:
-	 * 
-	 * 1.a.1.) Compute the acceleration over time as the cumulative sum of
-	 * differences. Example: accelCumulative += (acceleration -
-	 * prevAcceleration) 1.a.2.)
-	 * 
-	 * 1.b.) After 3 minutes (180s), if the cumulative acceleration exceeds the
-	 * threshold, continue SMSSession by instantiating a new SMSSession.
-	 */
 
 	private class SMSMonitor extends AsyncTask<SMSProperties, Void, Boolean> {
 
@@ -200,7 +222,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			serviceSwitch.setImageResource(R.drawable.st_logo_orange);
 			activationIndicator.setText(R.string.st_service_status_enabled);
 			
-			SMSCaptureService.startSMSCapture(this);
+			//SMSCaptureService.startSMSCapture(this);
 			serviceEnabled = state;
 			registerReceiver(smsIntentReceiver, smsIntentFilter);
 			receiverRegistered = state;
@@ -209,7 +231,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			serviceSwitch.setImageResource(R.drawable.st_logo_grey);
 			activationIndicator.setText(R.string.st_service_status_disabled);
 			
-			SMSCaptureService.stopSMSCapture(this);
+			//SMSCaptureService.stopSMSCapture(this);
 			serviceEnabled = state;
 			unregisterReceiver(smsIntentReceiver);
 			receiverRegistered = state;

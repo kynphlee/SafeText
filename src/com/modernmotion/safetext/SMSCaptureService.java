@@ -46,10 +46,9 @@ public class SMSCaptureService extends Service {
 				Message message = serviceHandler.obtainMessage();
 				serviceHandler.sendMessage(message);
 			} else if (action.equals(ACTION_STOP_CAPTURE)) {
-				Intent stopCaptureServiceIntent = new Intent(this, SMSCaptureService.class);
 				unregisterReceiver(smsReceiver);
 				receiverRegistered = false;
-				stopService(stopCaptureServiceIntent);
+				stopSelf();
 			}
 		}
 		return START_NOT_STICKY;
