@@ -78,7 +78,7 @@ public class STStatus extends Activity implements SensorEventListener {
 		sensorManager.registerListener(this, linearSensor,
 				SensorManager.SENSOR_DELAY_NORMAL);
 		Log.i(DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
-		
+
 		smsMonitor = new SMSMonitor();
 	}
 
@@ -98,32 +98,42 @@ public class STStatus extends Activity implements SensorEventListener {
 	 * 
 	 * Update (7:20p @ 3/8/14): Design a state machine that operates with the
 	 * following states: passive and active.
+	 * 
+	 * Update (1:57a @ 3/12/14): Define a state instance variable.
 	 */
 
 	private class SMSMonitor {
 
 		private double acceleration;
+		private float startTimeStamp;
+		private SensorEvent sensorEvent;
 		private State passiveState;
 		private State activeState;
-		private State monitorState = passiveState;
+		private State monitorState;
 
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
 			passiveState = new PassiveState(this);
+			monitorState = passiveState;
 		}
-		
+
 		public void setState(State newState) {
 			this.monitorState = newState;
 		}
-		
-		public void sense(final float[] values) {
-			monitorState.sense(values);
+
+		public void sense(SensorEvent event) {
+			sensorEvent = event;
+			acceleration = sqrt(pow(sensorEvent.values[0], 2) + pow(sensorEvent.values[1], 2)
+					+ pow(sensorEvent.values[2], 2));
+			Log.i(TAG, "acceleration: " + acceleration);
+			
+			monitorState.run(sensorEvent);
 		}
-		
+
 		public State getPassiveState() {
 			return passiveState;
 		}
-		
+
 		public State getActiveState() {
 			return activeState;
 		}
@@ -134,15 +144,8 @@ public class STStatus extends Activity implements SensorEventListener {
 			public State(SMSMonitor monitor) {
 				this.monitor = monitor;
 			}
-			
-			public void sense(Object...objects) {
-				float values[] = (float[])objects[0];
-				acceleration = sqrt(pow(values[0], 2) + pow(values[1], 2)
-						+ pow(values[2], 2));
-				run();
-			}
 
-			protected abstract void run();
+			protected abstract void run(final SensorEvent sensorEvent);
 		}
 
 		private class PassiveState extends State {
@@ -152,8 +155,20 @@ public class STStatus extends Activity implements SensorEventListener {
 			}
 
 			@Override
-			protected void run() {
-				monitor.setState(getActiveState());
+			protected void run(final SensorEvent sensorEvent) {
+				/*
+				 * Passive State: If the acceleration crosses the threshold,
+				 * transition to the Active state.
+				 */
+				if (acceleration >= ST_THRESHOLD) {
+					Log.d(TAG, "Threshold reached: " + acceleration);
+
+					sessionState = true;
+					startTimeStamp = sensorEvent.timestamp;
+					setServiceState(sessionState);
+					monitor.setState(getActiveState());
+					Log.d(TAG, "Monitor started.");
+				}
 			}
 
 		}
@@ -165,8 +180,17 @@ public class STStatus extends Activity implements SensorEventListener {
 			}
 
 			@Override
-			protected void run() {
-				monitor.setState(getPassiveState());
+			protected void run(final SensorEvent sensorEvent) {
+				/*
+				 * Active State: Monitor the acceleration for a 3 minute
+				 * duration
+				 */
+				double accelSum = acceleration;
+				double accelDiff = 0.0;
+				long currentTime = sensorEvent.timestamp;
+				Log.d(TAG, "Current time (ms): " + currentTime);
+				Log.d(TAG, "Difference: " + (currentTime - startTimeStamp));
+				// monitor.setState(getPassiveState());
 			}
 
 		}
@@ -175,49 +199,55 @@ public class STStatus extends Activity implements SensorEventListener {
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		float[] values = event.values.clone();
-		smsMonitor.sense(values);
 		acceleration = sqrt(pow(values[0], 2) + pow(values[1], 2)
 				+ pow(values[2], 2));
 
-		Log.i(TAG, "acceleration: " + acceleration);
-		if (acceleration >= ST_THRESHOLD) {
-			Log.d(TAG, "Threshold reached: " + acceleration);
-			if (!sessionState) {
-				Log.d(TAG, "Monitor inactive. Starting...");
+		int mode = 0;
+		if (mode == 0) {
+			// The Goal.
+			smsMonitor.sense(event);
+		} else {
+			Log.i(TAG, "acceleration: " + acceleration);
+			if (acceleration >= ST_THRESHOLD) {
+				Log.d(TAG, "Threshold reached: " + acceleration);
+				if (!sessionState) {
+					Log.d(TAG, "Monitor inactive. Starting...");
 
-				sessionState = true;
-				previousTimestamp = event.timestamp;
-				Log.d(TAG, "current threshold timestamp: " + previousTimestamp);
+					previousTimestamp = event.timestamp;
+					Log.d(TAG, "current threshold timestamp: "
+							+ previousTimestamp);
 
-				setServiceState(sessionState);
-				Log.d(TAG, "Monitor started.");
-			}
-
-			// TODO: Monitor the acceleration for a 3 minute duration
-			double accelSum = acceleration;
-			double accelDiff = 0.0;
-
-			durationTime = (event.timestamp - previousTimestamp) * MS2S;
-			Log.d(TAG, "Initial duration time: " + durationTime);
-
-			if (durationTime < SCAN_WINDOW) {
-				accelDiff = acceleration - accelDiff;
-				accelSum += accelDiff;
-
-				Log.d(TAG, "acceleration difference: " + accelDiff);
-				Log.d(TAG, "cumulative acceleration: " + accelSum);
-
-				if (durationTime >= SCAN_WINDOW) {
-					if (accelSum >= ST_THRESHOLD) {
-						durationTime = 0;
-						previousTimestamp = event.timestamp;
-					} else {
-						sessionState = false;
-						setServiceState(sessionState);
-					}
+					sessionState = true;
+					setServiceState(sessionState);
+					Log.d(TAG, "Monitor started.");
 				}
+
+				// TODO: Monitor the acceleration for a 3 minute duration
+				double accelSum = acceleration;
+				double accelDiff = 0.0;
+
 				durationTime = (event.timestamp - previousTimestamp) * MS2S;
-				Log.d(TAG, "Current duration time: " + durationTime);
+				Log.d(TAG, "Initial duration time: " + durationTime);
+
+				if (durationTime < SCAN_WINDOW) {
+					accelDiff = acceleration - accelDiff;
+					accelSum += accelDiff;
+
+					Log.d(TAG, "acceleration difference: " + accelDiff);
+					Log.d(TAG, "cumulative acceleration: " + accelSum);
+
+					if (durationTime >= SCAN_WINDOW) {
+						if (accelSum >= ST_THRESHOLD) {
+							durationTime = 0;
+							previousTimestamp = event.timestamp;
+						} else {
+							sessionState = false;
+							setServiceState(sessionState);
+						}
+					}
+					durationTime = previousTimestamp;
+					Log.d(TAG, "Current duration time: " + durationTime);
+				}
 			}
 		}
 	}
