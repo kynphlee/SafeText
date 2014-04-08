@@ -1,10 +1,18 @@
 package com.modernmotion.safetext;
 
 import static com.modernmotion.safetext.util.STConstants.*;
+import static com.modernmotion.safetext.util.MonitorParameters.Transition;
 import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -80,6 +88,15 @@ public class STStatus extends Activity implements SensorEventListener {
 		Log.i(DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
 
 		smsMonitor = new SMSMonitor();
+		FileOutputStream outStream;
+		
+		try {
+			outStream = openFileOutput("test.out", Context.MODE_PRIVATE);
+			outStream.write("File Test OK.".getBytes());
+			outStream.close();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
 	}
 
 	@Override
@@ -88,6 +105,20 @@ public class STStatus extends Activity implements SensorEventListener {
 	}
 
 	/*
+	 * To implement this, the monitor must be driven by the event stream, i.e.
+	 * The Water Wheel Concept.
+	 * 
+	 * Water Wheel Concept: Using a water wheel as an analogy, the monitor is
+	 * driven by the sensorEvent by utilizing the sense(SensorEvent event)
+	 * method to perform any common functionality while delegating the specific
+	 * operating states to a set of State instances that represent the Passive
+	 * and Active states.
+	 * 
+	 * The SensorEvent ("sensorEvent") comprises the "event stream" of the Water
+	 * Wheel Concept. After all of the common functionality has been processed,
+	 * the monitorState is driven by the event stream through it's
+	 * run(SensorEvent) method.
+	 * 
 	 * TODO:Accelerometer Sensor 1.) Create a 3 minute scan window (SMSSession).
 	 * 1.a.) Compute the acceleration over time as the cumulative sum of
 	 * differences. Example: accelCumulative += (acceleration -
@@ -102,14 +133,21 @@ public class STStatus extends Activity implements SensorEventListener {
 	 * Update (1:57a @ 3/12/14): Define a state instance variable.
 	 */
 
+	// Special build used for field testing.
 	private class SMSMonitor {
+		/*
+		 * TODO: Field Test Build. 1. Log the sensor data from the linear
+		 * accelerometer and the GPS. 2. Write the log data to a log file with
+		 * the following format: st-log-<timestamp>.txt 3. Implement the 3
+		 * minute duration code to test accurate state change.
+		 */
 
 		private double acceleration;
 		private float startTimeStamp;
-		private SensorEvent sensorEvent;
 		private State passiveState;
 		private State activeState;
 		private State monitorState;
+		private Transition currentState;
 
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
@@ -122,27 +160,33 @@ public class STStatus extends Activity implements SensorEventListener {
 		}
 
 		public void sense(SensorEvent event) {
-			sensorEvent = event;
-			acceleration = sqrt(pow(sensorEvent.values[0], 2) + pow(sensorEvent.values[1], 2)
-					+ pow(sensorEvent.values[2], 2));
-			Log.i(TAG, "acceleration: " + acceleration);
-			
-			monitorState.run(sensorEvent);
-		}
-
-		public State getPassiveState() {
-			return passiveState;
-		}
-
-		public State getActiveState() {
-			return activeState;
+			monitorState.run(event);
 		}
 
 		abstract class State {
+			/*
+			 * The base state for the monitorState's states
+			 */
+
 			protected SMSMonitor monitor;
 
 			public State(SMSMonitor monitor) {
 				this.monitor = monitor;
+			}
+
+			protected State getPassiveState() {
+				return passiveState;
+			}
+
+			protected State getActiveState() {
+				return activeState;
+			}
+
+			protected Transition transitionTo(Transition transition) {
+				currentState = transition;
+				monitor.setState(getActiveState());
+				Log.d(TAG, "Monitor transition changed.");
+				return transition;
 			}
 
 			protected abstract void run(final SensorEvent sensorEvent);
@@ -160,12 +204,18 @@ public class STStatus extends Activity implements SensorEventListener {
 				 * Passive State: If the acceleration crosses the threshold,
 				 * transition to the Active state.
 				 */
+				acceleration = sqrt(pow(sensorEvent.values[0], 2)
+						+ pow(sensorEvent.values[1], 2)
+						+ pow(sensorEvent.values[2], 2));
+				Log.i(TAG, "acceleration: " + acceleration);
+
 				if (acceleration >= ST_THRESHOLD) {
 					Log.d(TAG, "Threshold reached: " + acceleration);
 
 					sessionState = true;
 					startTimeStamp = sensorEvent.timestamp;
 					setServiceState(sessionState);
+
 					monitor.setState(getActiveState());
 					Log.d(TAG, "Monitor started.");
 				}
@@ -183,14 +233,31 @@ public class STStatus extends Activity implements SensorEventListener {
 			protected void run(final SensorEvent sensorEvent) {
 				/*
 				 * Active State: Monitor the acceleration for a 3 minute
-				 * duration
+				 * duration. To do that, the monitor's active state must be
+				 * driven by the event stream, i.e. The Water Wheel Concept
+				 * 
+				 * Water Wheel Concept: Using a water wheel as an analogy, the
+				 * active state is driven by the sensorEvent by utilizing the
 				 */
-				double accelSum = acceleration;
-				double accelDiff = 0.0;
-				long currentTime = sensorEvent.timestamp;
-				Log.d(TAG, "Current time (ms): " + currentTime);
-				Log.d(TAG, "Difference: " + (currentTime - startTimeStamp));
-				// monitor.setState(getPassiveState());
+
+				// double accelSum = acceleration;
+				// double accelDiff = 0.0;
+				// long currentTime = sensorEvent.timestamp;
+
+				try {
+					String timestamp = Long.toString(sensorEvent.timestamp);
+					SimpleDateFormat sf = new SimpleDateFormat("HH.mm.ss");
+					Date converttoData = sf.parse(timestamp);
+					Log.d(TAG, "seconds: " + converttoData.getSeconds());
+				} catch (ParseException ex) {
+					ex.printStackTrace();
+				}
+
+				// Log.d(TAG, "Current time (ms): " + currentTime);
+				// Log.d(TAG, "Difference: " + (currentTime - startTimeStamp));
+
+				monitor.setState(getPassiveState());
+				Log.d(TAG, "Monitor stopped.");
 			}
 
 		}
