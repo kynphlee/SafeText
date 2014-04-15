@@ -1,19 +1,10 @@
 package com.modernmotion.safetext;
 
-import static com.modernmotion.safetext.util.STConstants.*;
-import static com.modernmotion.safetext.util.MonitorParameters.Transition;
+import static com.modernmotion.safetext.util.STConstants.DEBUG_SENSOR_MANAGER;
+import static com.modernmotion.safetext.util.STConstants.MS2S;
+import static com.modernmotion.safetext.util.STConstants.ST_THRESHOLD;
 import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintWriter;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -23,14 +14,11 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
-
-import com.modernmotion.safetext.domain.SMSProperties;
 
 public class STStatus extends Activity implements SensorEventListener {
 
@@ -40,15 +28,7 @@ public class STStatus extends Activity implements SensorEventListener {
 
 	private SensorManager sensorManager;
 	private Sensor linearSensor;
-	private static boolean sessionState = false;
-
-	// TODO: Implement Acceleration-based switch variables
-	private final String TAG = "STMotionSensor";
-	private Calendar cal = Calendar.getInstance();
-	private double acceleration;
 	private SMSMonitor smsMonitor;
-	private double previousTimestamp;
-	private double durationTime;
 
 	private static final String SERVICE_STATE = "serviceState";
 	private static final String RECEIVER_STATE = "receiverState";
@@ -72,31 +52,13 @@ public class STStatus extends Activity implements SensorEventListener {
 		messageValue.setText("");
 		messageValue.setMovementMethod(new ScrollingMovementMethod());
 
-		// Variables
-		acceleration = 0.0;
-
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		Log.i(DEBUG_SENSOR_MANAGER, "acquired sensor manager");
-
 		linearSensor = sensorManager
 				.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-		Log.i(DEBUG_ACCELEROMETER, "sensor: " + linearSensor.getVendor()
-				+ ", type: " + linearSensor.getName());
-
 		sensorManager.registerListener(this, linearSensor,
 				SensorManager.SENSOR_DELAY_NORMAL);
-		Log.i(DEBUG_SENSOR_MANAGER, "registered sensor with normal delay");
 
 		smsMonitor = new SMSMonitor();
-		FileOutputStream outStream;
-		
-		try {
-			outStream = openFileOutput("test.out", Context.MODE_PRIVATE);
-			outStream.write("File Test OK.".getBytes());
-			outStream.close();
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
 	}
 
 	@Override
@@ -104,51 +66,15 @@ public class STStatus extends Activity implements SensorEventListener {
 		// TODO Auto-generated method stub
 	}
 
-	/*
-	 * To implement this, the monitor must be driven by the event stream, i.e.
-	 * The Water Wheel Concept.
-	 * 
-	 * Water Wheel Concept: Using a water wheel as an analogy, the monitor is
-	 * driven by the sensorEvent by utilizing the sense(SensorEvent event)
-	 * method to perform any common functionality while delegating the specific
-	 * operating states to a set of State instances that represent the Passive
-	 * and Active states.
-	 * 
-	 * The SensorEvent ("sensorEvent") comprises the "event stream" of the Water
-	 * Wheel Concept. After all of the common functionality has been processed,
-	 * the monitorState is driven by the event stream through it's
-	 * run(SensorEvent) method.
-	 * 
-	 * TODO:Accelerometer Sensor 1.) Create a 3 minute scan window (SMSSession).
-	 * 1.a.) Compute the acceleration over time as the cumulative sum of
-	 * differences. Example: accelCumulative += (acceleration -
-	 * prevAcceleration)
-	 * 
-	 * 1.b.) After 3 minutes (180s), if the cumulative acceleration exceeds the
-	 * threshold, continue SMSSession by instantiating a new SMSSession.
-	 * 
-	 * Update (7:20p @ 3/8/14): Design a state machine that operates with the
-	 * following states: passive and active.
-	 * 
-	 * Update (1:57a @ 3/12/14): Define a state instance variable.
-	 */
-
-	// Special build used for field testing.
 	private class SMSMonitor {
-		/*
-		 * TODO: Field Test Build. 1. Log the sensor data from the linear
-		 * accelerometer and the GPS. 2. Write the log data to a log file with
-		 * the following format: st-log-<timestamp>.txt 3. Implement the 3
-		 * minute duration code to test accurate state change.
-		 */
 
 		private double acceleration;
-		private float startTimeStamp;
 		private State passiveState;
 		private State activeState;
 		private State monitorState;
-		private Transition currentState;
-
+		protected double startTime;
+		private static final long DURATION = 180;
+		
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
 			passiveState = new PassiveState(this);
@@ -156,17 +82,23 @@ public class STStatus extends Activity implements SensorEventListener {
 		}
 
 		public void setState(State newState) {
-			this.monitorState = newState;
+			monitorState = newState;
 		}
 
 		public void sense(SensorEvent event) {
+			acceleration = sqrt(pow(event.values[0], 2) 
+					+ pow(event.values[1], 2)
+					+ pow(event.values[2], 2));
 			monitorState.run(event);
 		}
 
+		private double longToDecimal(long longVal) {
+			return Long.valueOf(longVal).doubleValue();
+		}
+
 		abstract class State {
-			/*
-			 * The base state for the monitorState's states
-			 */
+
+			double seconds = 0;
 
 			protected SMSMonitor monitor;
 
@@ -182,14 +114,7 @@ public class STStatus extends Activity implements SensorEventListener {
 				return activeState;
 			}
 
-			protected Transition transitionTo(Transition transition) {
-				currentState = transition;
-				monitor.setState(getActiveState());
-				Log.d(TAG, "Monitor transition changed.");
-				return transition;
-			}
-
-			protected abstract void run(final SensorEvent sensorEvent);
+			protected abstract void run(final SensorEvent event);
 		}
 
 		private class PassiveState extends State {
@@ -199,28 +124,13 @@ public class STStatus extends Activity implements SensorEventListener {
 			}
 
 			@Override
-			protected void run(final SensorEvent sensorEvent) {
-				/*
-				 * Passive State: If the acceleration crosses the threshold,
-				 * transition to the Active state.
-				 */
-				acceleration = sqrt(pow(sensorEvent.values[0], 2)
-						+ pow(sensorEvent.values[1], 2)
-						+ pow(sensorEvent.values[2], 2));
-				Log.i(TAG, "acceleration: " + acceleration);
-
+			protected void run(final SensorEvent event) {
 				if (acceleration >= ST_THRESHOLD) {
-					Log.d(TAG, "Threshold reached: " + acceleration);
-
-					sessionState = true;
-					startTimeStamp = sensorEvent.timestamp;
-					setServiceState(sessionState);
-
+					setServiceState(true);
+					startTime = longToDecimal(System.currentTimeMillis());
 					monitor.setState(getActiveState());
-					Log.d(TAG, "Monitor started.");
 				}
 			}
-
 		}
 
 		private class ActiveState extends State {
@@ -230,95 +140,24 @@ public class STStatus extends Activity implements SensorEventListener {
 			}
 
 			@Override
-			protected void run(final SensorEvent sensorEvent) {
-				/*
-				 * Active State: Monitor the acceleration for a 3 minute
-				 * duration. To do that, the monitor's active state must be
-				 * driven by the event stream, i.e. The Water Wheel Concept
-				 * 
-				 * Water Wheel Concept: Using a water wheel as an analogy, the
-				 * active state is driven by the sensorEvent by utilizing the
-				 */
+			protected void run(final SensorEvent event) {
+				double currentTimeDouble = longToDecimal(System.currentTimeMillis());
+				seconds = (currentTimeDouble - startTime) * MS2S;
 
-				// double accelSum = acceleration;
-				// double accelDiff = 0.0;
-				// long currentTime = sensorEvent.timestamp;
-
-				try {
-					String timestamp = Long.toString(sensorEvent.timestamp);
-					SimpleDateFormat sf = new SimpleDateFormat("HH.mm.ss");
-					Date converttoData = sf.parse(timestamp);
-					Log.d(TAG, "seconds: " + converttoData.getSeconds());
-				} catch (ParseException ex) {
-					ex.printStackTrace();
+				if (seconds >= DURATION) {
+					setServiceState(false);
+					monitor.setState(getPassiveState());
 				}
-
-				// Log.d(TAG, "Current time (ms): " + currentTime);
-				// Log.d(TAG, "Difference: " + (currentTime - startTimeStamp));
-
-				monitor.setState(getPassiveState());
-				Log.d(TAG, "Monitor stopped.");
 			}
-
 		}
 	}
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		float[] values = event.values.clone();
-		acceleration = sqrt(pow(values[0], 2) + pow(values[1], 2)
-				+ pow(values[2], 2));
-
-		int mode = 0;
-		if (mode == 0) {
-			// The Goal.
-			smsMonitor.sense(event);
-		} else {
-			Log.i(TAG, "acceleration: " + acceleration);
-			if (acceleration >= ST_THRESHOLD) {
-				Log.d(TAG, "Threshold reached: " + acceleration);
-				if (!sessionState) {
-					Log.d(TAG, "Monitor inactive. Starting...");
-
-					previousTimestamp = event.timestamp;
-					Log.d(TAG, "current threshold timestamp: "
-							+ previousTimestamp);
-
-					sessionState = true;
-					setServiceState(sessionState);
-					Log.d(TAG, "Monitor started.");
-				}
-
-				// TODO: Monitor the acceleration for a 3 minute duration
-				double accelSum = acceleration;
-				double accelDiff = 0.0;
-
-				durationTime = (event.timestamp - previousTimestamp) * MS2S;
-				Log.d(TAG, "Initial duration time: " + durationTime);
-
-				if (durationTime < SCAN_WINDOW) {
-					accelDiff = acceleration - accelDiff;
-					accelSum += accelDiff;
-
-					Log.d(TAG, "acceleration difference: " + accelDiff);
-					Log.d(TAG, "cumulative acceleration: " + accelSum);
-
-					if (durationTime >= SCAN_WINDOW) {
-						if (accelSum >= ST_THRESHOLD) {
-							durationTime = 0;
-							previousTimestamp = event.timestamp;
-						} else {
-							sessionState = false;
-							setServiceState(sessionState);
-						}
-					}
-					durationTime = previousTimestamp;
-					Log.d(TAG, "Current duration time: " + durationTime);
-				}
-			}
-		}
+		smsMonitor.sense(event);
 	}
 
+	/*
 	// ------------ LEGACY START ------------------------
 	// long timeStamp = event.timestamp;
 	// double accelSum = 0;
@@ -340,7 +179,9 @@ public class STStatus extends Activity implements SensorEventListener {
 	// Update global variables
 	// accel_prev = acceleration;
 	// ------------ LEGACY END ------------------------
-
+	 * 
+	 */
+	
 	private BroadcastReceiver smsIntentReceiver = new BroadcastReceiver() {
 
 		@Override
@@ -358,26 +199,22 @@ public class STStatus extends Activity implements SensorEventListener {
 		}
 	};
 
-	private boolean isEnabled() {
-		return serviceEnabled;
-	}
-
 	private void setServiceState(boolean state) {
 		if (state) {
 			// Start service
 			serviceSwitch.setImageResource(R.drawable.st_logo_orange);
 			activationIndicator.setText(R.string.st_service_status_enabled);
 
-			// SMSCaptureService.startSMSCapture(this);
+			SMSCaptureService.startSMSCapture(this);
 			serviceEnabled = state;
 			registerReceiver(smsIntentReceiver, smsIntentFilter);
 			receiverRegistered = state;
 		} else {
-			// End service
+			// Stop service
 			serviceSwitch.setImageResource(R.drawable.st_logo_grey);
 			activationIndicator.setText(R.string.st_service_status_disabled);
 
-			// SMSCaptureService.stopSMSCapture(this);
+			SMSCaptureService.stopSMSCapture(this);
 			serviceEnabled = state;
 			unregisterReceiver(smsIntentReceiver);
 			receiverRegistered = state;
@@ -413,26 +250,28 @@ public class STStatus extends Activity implements SensorEventListener {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if (serviceEnabled) {
+		/*if (serviceEnabled) {
 			registerReceiver(smsIntentReceiver, smsIntentFilter);
 			receiverRegistered = true;
 		}
 		sensorManager.registerListener(this, linearSensor,
 				SensorManager.SENSOR_DELAY_NORMAL);
+		*/
 		Log.d(DEBUG_SENSOR_MANAGER, "sensor registered");
-		Log.d(DEBUG_SENSOR_MANAGER, "  *** sensor start ***  ");
+		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity started ***  ");
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		if (receiverRegistered) {
+		/*if (receiverRegistered) {
 			unregisterReceiver(smsIntentReceiver);
 			receiverRegistered = false;
 		}
 		sensorManager.unregisterListener(this);
-		Log.d(DEBUG_SENSOR_MANAGER, "  *** sensor stop ***  ");
-		Log.d(DEBUG_SENSOR_MANAGER, "state: onPause(), sensor unregistered");
+		*/
+		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity pause ***  ");
+		Log.d(DEBUG_SENSOR_MANAGER, "state: onPause()");
 	}
 
 	@Override
@@ -442,7 +281,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			unregisterReceiver(smsIntentReceiver);
 		}
 		sensorManager.unregisterListener(this);
-		Log.d(DEBUG_SENSOR_MANAGER, "  *** sensor end ***  ");
-		Log.d(DEBUG_SENSOR_MANAGER, "state: onDestroy(),sensor unregistered");
+		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity ended ***  ");
+		Log.d(DEBUG_SENSOR_MANAGER, "state: onDestroy()");
 	}
 }
