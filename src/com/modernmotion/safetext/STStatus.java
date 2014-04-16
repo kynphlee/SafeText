@@ -126,7 +126,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			@Override
 			protected void run(final SensorEvent event) {
 				if (acceleration >= ST_THRESHOLD) {
-					setServiceState(true);
+					setSMSCaptureState(true);
 					startTime = longToDecimal(System.currentTimeMillis());
 					monitor.setState(getActiveState());
 				}
@@ -143,9 +143,8 @@ public class STStatus extends Activity implements SensorEventListener {
 			protected void run(final SensorEvent event) {
 				double currentTimeDouble = longToDecimal(System.currentTimeMillis());
 				seconds = (currentTimeDouble - startTime) * MS2S;
-
 				if (seconds >= DURATION) {
-					setServiceState(false);
+					setSMSCaptureState(false);
 					monitor.setState(getPassiveState());
 				}
 			}
@@ -199,7 +198,7 @@ public class STStatus extends Activity implements SensorEventListener {
 		}
 	};
 
-	private void setServiceState(boolean state) {
+	private void setSMSCaptureState(boolean state) {
 		if (state) {
 			// Start service
 			serviceSwitch.setImageResource(R.drawable.st_logo_orange);
