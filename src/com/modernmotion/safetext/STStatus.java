@@ -7,6 +7,7 @@ import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -14,6 +15,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -89,6 +91,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			acceleration = sqrt(pow(event.values[0], 2) 
 					+ pow(event.values[1], 2)
 					+ pow(event.values[2], 2));
+			Log.i("TAG", "acceleration: " + acceleration);
 			monitorState.run(event);
 		}
 
@@ -195,6 +198,12 @@ public class STStatus extends Activity implements SensorEventListener {
 				senderValue.setText(sender);
 				messageValue.setText(message);
 				Log.i("SMSTAG", "sms status captured!");
+				
+				ContentValues values = new ContentValues();
+				values.put("address", sender);
+				values.put("body", message);
+				getContentResolver().insert(Uri.parse("content://sms/sent"), values);
+				Log.i("SMSTAG", "sms written to content provider!");
 			}
 		}
 	};
