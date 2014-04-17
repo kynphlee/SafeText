@@ -14,6 +14,7 @@ import android.os.Message;
 import android.os.Process;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
+import android.util.Log;
 import android.widget.Toast;
 
 public class SMSCaptureService extends Service {
@@ -102,11 +103,13 @@ public class SMSCaptureService extends Service {
 			smsReceivedIntent.putExtra("sender", sender);
 			smsReceivedIntent.putExtra("message", message);
 			sendBroadcast(smsReceivedIntent);
+			Log.i("SMSTAG", "sms captured!");
 			
 			// send an auto-reply to the sender
 			SmsManager sms = SmsManager.getDefault();
 			String autoReply = getResources().getString(R.string.st_service_active_message);
 			sms.sendTextMessage(messages[0].getOriginatingAddress(), null, autoReply, null, null);
+			Log.i("SMSTAG", "sms auto-reply sent!");
 		}
 	};
 

@@ -194,6 +194,7 @@ public class STStatus extends Activity implements SensorEventListener {
 				smsCount.setText(String.valueOf(count));
 				senderValue.setText(sender);
 				messageValue.setText(message);
+				Log.i("SMSTAG", "sms status captured!");
 			}
 		}
 	};
