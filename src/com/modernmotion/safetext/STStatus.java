@@ -17,7 +17,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -26,7 +25,7 @@ public class STStatus extends Activity implements SensorEventListener {
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
-	private TextView activationIndicator, smsCount, senderValue, messageValue;
+	private TextView activationIndicator;
 
 	private SensorManager sensorManager;
 	private Sensor linearSensor;
@@ -45,14 +44,7 @@ public class STStatus extends Activity implements SensorEventListener {
 		setContentView(R.layout.st_status);
 
 		serviceSwitch = (ImageView) findViewById(R.id.st_service_switch);
-		smsCount = (TextView) (findViewById(R.id.st_sms_count));
 		activationIndicator = (TextView) findViewById(R.id.st_service_status_indicator);
-		senderValue = (TextView) findViewById(R.id.st_sms_sender_value);
-		messageValue = (TextView) findViewById(R.id.st_sms_message_value);
-
-		senderValue.setText("");
-		messageValue.setText("");
-		messageValue.setMovementMethod(new ScrollingMovementMethod());
 
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		linearSensor = sensorManager
@@ -75,7 +67,7 @@ public class STStatus extends Activity implements SensorEventListener {
 		private State activeState;
 		private State monitorState;
 		protected double startTime;
-		private static final long DURATION = 180;
+		//private static final long DURATION = 3;
 		
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
@@ -190,13 +182,9 @@ public class STStatus extends Activity implements SensorEventListener {
 		public void onReceive(Context context, Intent intent) {
 			String action = intent.getAction();
 			if (action.equals("SMS_MESSAGE_RECEIVED")) {
-				int count = intent.getExtras().getInt("smsCount");
 				String message = intent.getExtras().getString("message");
 				String sender = intent.getExtras().getString("sender");
 
-				smsCount.setText(String.valueOf(count));
-				senderValue.setText(sender);
-				messageValue.setText(message);
 				Log.i("SMSTAG", "sms status captured!");
 				
 				ContentValues values = new ContentValues();
@@ -259,13 +247,6 @@ public class STStatus extends Activity implements SensorEventListener {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		/*if (serviceEnabled) {
-			registerReceiver(smsIntentReceiver, smsIntentFilter);
-			receiverRegistered = true;
-		}
-		sensorManager.registerListener(this, linearSensor,
-				SensorManager.SENSOR_DELAY_NORMAL);
-		*/
 		Log.d(DEBUG_SENSOR_MANAGER, "sensor registered");
 		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity started ***  ");
 	}
@@ -273,12 +254,6 @@ public class STStatus extends Activity implements SensorEventListener {
 	@Override
 	protected void onPause() {
 		super.onPause();
-		/*if (receiverRegistered) {
-			unregisterReceiver(smsIntentReceiver);
-			receiverRegistered = false;
-		}
-		sensorManager.unregisterListener(this);
-		*/
 		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity pause ***  ");
 		Log.d(DEBUG_SENSOR_MANAGER, "state: onPause()");
 	}
