@@ -15,6 +15,9 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,14 +25,25 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 public class STStatus extends Activity implements SensorEventListener {
+	
+	private final static String TAG = "DEBUG (Location): ";
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
 	private TextView activationIndicator;
+	private TextView speedLabel;
+	private TextView speedValue;
+	private TextView lonValue;
+	private TextView latValue;
 
 	private SensorManager sensorManager;
 	private Sensor linearSensor;
 	private SMSMonitor smsMonitor;
+
+	private LocationManager locationManager;
+	private static String NETWORK = LocationManager.NETWORK_PROVIDER;
+	private static String GPS = LocationManager.GPS_PROVIDER;
+	private String locationMode = GPS;
 
 	private static final String SERVICE_STATE = "serviceState";
 	private static final String RECEIVER_STATE = "receiverState";
@@ -45,15 +59,50 @@ public class STStatus extends Activity implements SensorEventListener {
 
 		serviceSwitch = (ImageView) findViewById(R.id.st_service_switch);
 		activationIndicator = (TextView) findViewById(R.id.st_service_status_indicator);
+		speedValue = (TextView)findViewById(R.id.st_speed);
+		//lonValue = (TextView)findViewById(R.id.st_lon_value);
+		//latValue = (TextView)findViewById(R.id.st_lat_value);
+		
+		//lonValue.setText("0");
+		//latValue.setText("0");
+		
 
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		linearSensor = sensorManager
 				.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
 		sensorManager.registerListener(this, linearSensor,
 				SensorManager.SENSOR_DELAY_NORMAL);
-
+		locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		smsMonitor = new SMSMonitor();
 	}
+
+	private LocationListener locationListener = new LocationListener() {
+
+		@Override
+		public void onStatusChanged(String provider, int status, Bundle extras) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void onProviderEnabled(String provider) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void onProviderDisabled(String provider) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void onLocationChanged(Location location) {
+			//Log.i(TAG, "Current location: " + location);
+			Log.i(TAG, "Current speed: " + location.getSpeed());
+			speedValue.setText(String.valueOf(location.getSpeed()));
+		}
+	};
 
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -67,8 +116,8 @@ public class STStatus extends Activity implements SensorEventListener {
 		private State activeState;
 		private State monitorState;
 		protected double startTime;
-		//private static final long DURATION = 3;
-		
+		private static final long DURATION = 180;
+
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
 			passiveState = new PassiveState(this);
@@ -80,10 +129,8 @@ public class STStatus extends Activity implements SensorEventListener {
 		}
 
 		public void sense(SensorEvent event) {
-			acceleration = sqrt(pow(event.values[0], 2) 
-					+ pow(event.values[1], 2)
-					+ pow(event.values[2], 2));
-			Log.i("TAG", "acceleration: " + acceleration);
+			acceleration = sqrt(pow(event.values[0], 2)
+					+ pow(event.values[1], 2) + pow(event.values[2], 2));
 			monitorState.run(event);
 		}
 
@@ -136,7 +183,8 @@ public class STStatus extends Activity implements SensorEventListener {
 
 			@Override
 			protected void run(final SensorEvent event) {
-				double currentTimeDouble = longToDecimal(System.currentTimeMillis());
+				double currentTimeDouble = longToDecimal(System
+						.currentTimeMillis());
 				seconds = (currentTimeDouble - startTime) * MS2S;
 				if (seconds >= DURATION) {
 					setSMSCaptureState(false);
@@ -148,34 +196,21 @@ public class STStatus extends Activity implements SensorEventListener {
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		smsMonitor.sense(event);
+		//smsMonitor.sense(event);
 	}
 
 	/*
-	// ------------ LEGACY START ------------------------
-	// long timeStamp = event.timestamp;
-	// double accelSum = 0;
-	//
-	// while ((event.timestamp - timeStamp) < 180) {
-	// double accelDiff = acceleration - accelSum;
-	// accelSum += accelDiff;
-	// }
-	//
-	// // The Manual Switch Logic
-	// if (!isEnabled()) {
-	// setServiceState(true);
-	// } else {
-	// if (isEnabled()) {
-	// setServiceState(false);
-	// }
-	// }
-
-	// Update global variables
-	// accel_prev = acceleration;
-	// ------------ LEGACY END ------------------------
+	 * // ------------ LEGACY START ------------------------ // long timeStamp =
+	 * event.timestamp; // double accelSum = 0; // // while ((event.timestamp -
+	 * timeStamp) < 180) { // double accelDiff = acceleration - accelSum; //
+	 * accelSum += accelDiff; // } // // // The Manual Switch Logic // if
+	 * (!isEnabled()) { // setServiceState(true); // } else { // if
+	 * (isEnabled()) { // setServiceState(false); // } // }
 	 * 
+	 * // Update global variables // accel_prev = acceleration; // ------------
+	 * LEGACY END ------------------------
 	 */
-	
+
 	private BroadcastReceiver smsIntentReceiver = new BroadcastReceiver() {
 
 		@Override
@@ -186,11 +221,12 @@ public class STStatus extends Activity implements SensorEventListener {
 				String sender = intent.getExtras().getString("sender");
 
 				Log.i("SMSTAG", "sms status captured!");
-				
+
 				ContentValues values = new ContentValues();
 				values.put("address", sender);
 				values.put("body", message);
-				getContentResolver().insert(Uri.parse("content://sms/sent"), values);
+				getContentResolver().insert(Uri.parse("content://sms/sent"),
+						values);
 				Log.i("SMSTAG", "sms written to content provider!");
 			}
 		}
@@ -247,13 +283,15 @@ public class STStatus extends Activity implements SensorEventListener {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		Log.d(DEBUG_SENSOR_MANAGER, "sensor registered");
+		locationManager.requestLocationUpdates(locationMode, 0, 0, locationListener);
+		Log.d(DEBUG_SENSOR_MANAGER, "state: onResume()");
 		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity started ***  ");
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
+		locationManager.removeUpdates(locationListener);
 		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity pause ***  ");
 		Log.d(DEBUG_SENSOR_MANAGER, "state: onPause()");
 	}
@@ -265,6 +303,7 @@ public class STStatus extends Activity implements SensorEventListener {
 			unregisterReceiver(smsIntentReceiver);
 		}
 		sensorManager.unregisterListener(this);
+		locationManager.removeUpdates(locationListener);
 		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity ended ***  ");
 		Log.d(DEBUG_SENSOR_MANAGER, "state: onDestroy()");
 	}

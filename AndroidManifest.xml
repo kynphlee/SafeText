@@ -8,11 +8,15 @@
         android:maxSdkVersion="18"
         android:minSdkVersion="11"
         android:targetSdkVersion="19" />
+    
+    <!-- Location -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
  
+    <!-- SMS manager -->
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     
-     <!-- SMS content provider -->
+    <!-- SMS content provider -->
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.WRITE_SMS"/>
     
