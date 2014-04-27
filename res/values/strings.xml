@@ -24,5 +24,6 @@
     <string name="st_google_location_services_connected">Google Location Services connected.</string>
     <string name="st_google_location_services_disconnected">Google Location Services disconnected.</string>
     <string name="title_activity_stutils">STUtils</string>
+    <string name="st_speed">Speed(mph):</string>
 
 </resources>
