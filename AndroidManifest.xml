@@ -40,17 +40,20 @@
         </activity>
         <activity
             android:name="com.modernmotion.safetext.STSignup"
+            android:screenOrientation="portrait"
             android:label="@string/title_activity_stsignup"
             android:theme="@style/AppTheme" >
         </activity>
         <activity
             android:name="com.modernmotion.safetext.STStatus"
+            android:screenOrientation="portrait"
             android:label="@string/title_activity_ststatus"
             android:theme="@style/AppTheme" >
         </activity>
 
         <activity
             android:name="com.modernmotion.safetext.util.STUtils"
+            android:screenOrientation="portrait"
             android:label="@string/title_activity_stutils" >
         </activity>
         
@@ -58,12 +61,6 @@
             android:name="com.modernmotion.safetext.SMSCaptureService"
             android:enabled="true"
             android:exported="false" >
-        </service>
-        
-        <service 
-            android:name="com.modernmotion.safetext.STActivityRecognizer"
-            android:enabled="true"
-            android:exported="false" >            
         </service>
     </application>
 

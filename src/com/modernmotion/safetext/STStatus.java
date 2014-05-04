@@ -1,20 +1,12 @@
 package com.modernmotion.safetext;
 
-import static com.modernmotion.safetext.util.STConstants.DEBUG_SENSOR_MANAGER;
-import static com.modernmotion.safetext.util.STConstants.MS2S;
-import static com.modernmotion.safetext.util.STConstants.ST_THRESHOLD;
-import static java.lang.Math.pow;
-import static java.lang.Math.sqrt;
+import static com.modernmotion.safetext.util.STConstants.*;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -25,13 +17,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 public class STStatus extends Activity {
-	
+
 	private final static String TAG = "DEBUG (Location): ";
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
 	private TextView activationIndicator;
-	
+
 	private TextView speedValue;
 	private TextView lonValue;
 	private TextView latValue;
@@ -57,17 +49,17 @@ public class STStatus extends Activity {
 
 		serviceSwitch = (ImageView) findViewById(R.id.st_service_switch);
 		activationIndicator = (TextView) findViewById(R.id.st_service_status_indicator);
-		speedValue = (TextView)findViewById(R.id.st_speed);
-		lonValue = (TextView)findViewById(R.id.lon_value);
-		latValue = (TextView)findViewById(R.id.lat_value);
-		
+		speedValue = (TextView) findViewById(R.id.st_speed);
+		lonValue = (TextView) findViewById(R.id.lon_value);
+		latValue = (TextView) findViewById(R.id.lat_value);
+
 		lonValue.setText("0");
 		latValue.setText("0");
-		
-		//	GPS
+
+		// GPS
 		locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-		
-		//	Monitor
+
+		// Monitor
 		smsMonitor = new SMSMonitor();
 	}
 
@@ -93,14 +85,16 @@ public class STStatus extends Activity {
 
 		@Override
 		public void onLocationChanged(Location location) {
-			//double speedMPH = (location.getSpeed() * 0.44704);
-			if (location.hasSpeed()) {
-				float speedMPH = location.getSpeed();
-			
-				Log.i(TAG, "Current speed: " + speedMPH + ", time: " + location.getTime());
-				speedValue.setText(String.valueOf(speedMPH));
+			if (location != null && location.hasSpeed()) {
+				float speed = location.getSpeed() * 0.44704f;
+
+				Log.i(TAG,
+						"Current speed: " + speed + ", time: "
+								+ location.getTime());
+				speedValue.setText(String.valueOf(speed));
 				latValue.setText(String.valueOf(location.getLatitude()));
 				lonValue.setText(String.valueOf(location.getLongitude()));
+
 				smsMonitor.sense(location);
 			}
 		}
@@ -108,12 +102,10 @@ public class STStatus extends Activity {
 
 	private class SMSMonitor {
 
-		private double acceleration;
 		private State passiveState;
 		private State activeState;
 		private State monitorState;
 		protected double startTime;
-		private static final long DURATION = 180;
 
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
@@ -125,27 +117,23 @@ public class STStatus extends Activity {
 			monitorState = newState;
 		}
 
-		public void sense(SensorEvent event) {
-			acceleration = sqrt(pow(event.values[0], 2)
-					+ pow(event.values[1], 2) + pow(event.values[2], 2));
-			monitorState.run(event);
-		}
-		
 		public void sense(Location location) {
 			monitorState.run(location);
 		}
 
-		private int speedToMPH(Location location) {
-			return (int) (location.getSpeed() * 0.44704);
+		private float speedToMPH(Location location) {
+			return (location.getSpeed() * 0.44704f);
 		}
 		
+		private float speedToMPH(float speed) {
+			return (speed * 0.44704f);
+		}
+
 		private double longToDecimal(long longVal) {
 			return Long.valueOf(longVal).doubleValue();
 		}
 
 		abstract class State {
-
-			double seconds = 0;
 
 			protected SMSMonitor monitor;
 
@@ -161,7 +149,6 @@ public class STStatus extends Activity {
 				return activeState;
 			}
 
-			protected abstract void run(final SensorEvent event);
 			protected abstract void run(final Location location);
 		}
 
@@ -172,20 +159,13 @@ public class STStatus extends Activity {
 			}
 
 			@Override
-			@Deprecated
-			protected void run(final SensorEvent event) {
-				if (acceleration >= ST_THRESHOLD) {
-					setSMSCaptureState(true);
-					startTime = longToDecimal(System.currentTimeMillis());
-					monitor.setState(getActiveState());
-				}
-			}
-
-			@Override
 			protected void run(final Location location) {
-				//int speed = speedToMPH(location);
-				float speed = location.getSpeed();
-				if (speed >= ST_THRESHOLD) {
+				if (location == null || !location.hasSpeed()) {
+					return;
+				}
+
+				float speed = speedToMPH(location);
+				if (speed >= UPPER_THRESHOLD) {
 					setSMSCaptureState(true);
 					startTime = longToDecimal(System.currentTimeMillis());
 					monitor.setState(getActiveState());
@@ -194,31 +174,33 @@ public class STStatus extends Activity {
 		}
 
 		private class ActiveState extends State {
-
+			private int durationLimit = THREE_MINUTES;
+			private double duration = 0;
+			
+			private float lowerLimit = speedToMPH(LOWER_THRESHOLD);
+			private float upperLimit = speedToMPH(UPPER_THRESHOLD);
+			
 			public ActiveState(SMSMonitor monitor) {
 				super(monitor);
 			}
 
 			@Override
-			@Deprecated
-			protected void run(final SensorEvent event) {
-				double currentTimeDouble = 
-						longToDecimal(System.currentTimeMillis());
-				seconds = (currentTimeDouble - startTime) * MS2S;
-				if (seconds >= DURATION) {
-					setSMSCaptureState(false);
-					monitor.setState(getPassiveState());
-				}
-			}
-
-			@Override
 			protected void run(Location location) {
-				double currentTimeDouble = 
-						longToDecimal(System.currentTimeMillis());
-				seconds = (currentTimeDouble - startTime) * MS2S;
-				if (seconds >= DURATION) {
-					setSMSCaptureState(false);
-					monitor.setState(getPassiveState());
+				double currentTimeDouble = longToDecimal(System.currentTimeMillis());
+				duration = (currentTimeDouble - startTime) * MS2S;
+
+				if (duration >= durationLimit) {
+					float speed = speedToMPH(location);
+					if (speed >= upperLimit) {
+						durationLimit = THREE_MINUTES;
+						startTime = longToDecimal(System.currentTimeMillis());
+					} else if (speed < upperLimit) {
+						durationLimit = ONE_MINUTE;
+						startTime = longToDecimal(System.currentTimeMillis());
+					} else if (speed <= lowerLimit){
+						setSMSCaptureState(false);
+						monitor.setState(getPassiveState());
+					}
 				}
 			}
 		}
@@ -226,15 +208,27 @@ public class STStatus extends Activity {
 
 	/*
 	 * // ------------ LEGACY START ------------------------ 
-	 * // long timeStamp =
-	 * event.timestamp; // double accelSum = 0; // // while ((event.timestamp -
-	 * timeStamp) < 180) { // double accelDiff = acceleration - accelSum; //
-	 * accelSum += accelDiff; // } // // // The Manual Switch Logic // if
-	 * (!isEnabled()) { // setServiceState(true); // } else { // if
-	 * (isEnabled()) { // setServiceState(false); // } // }
+	 * // long timeStamp = event.timestamp; 
+	 * // double accelSum = 0; 
+	 * // 
+	 * // while ((event.timestamp - timeStamp) < 180) { 
+	 * // 	double accelDiff = acceleration - accelSum; 
+	 * // 	accelSum += accelDiff; 
+	 * // } 
+	 * // 
+	 * // 
+	 * // The Manual Switch Logic 
+	 * // if (!isEnabled()) { 
+	 * // 	setServiceState(true); 
+	 * // } else { 
+	 * // if (isEnabled()) { 
+	 * // 	setServiceState(false); 
+	 * // } 
+	 * // }
 	 * 
-	 * // Update global variables // accel_prev = acceleration; // ------------
-	 * LEGACY END ------------------------
+	 * // Update global variables 
+	 * // accel_prev = acceleration; 
+	 * // ------------ LEGACY END ------------------------
 	 */
 
 	private BroadcastReceiver smsIntentReceiver = new BroadcastReceiver() {
@@ -309,7 +303,8 @@ public class STStatus extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		locationManager.requestLocationUpdates(locationMode, 0, 0, locationListener);
+		locationManager.requestLocationUpdates(locationMode, 0, 0,
+				locationListener);
 		smsMonitor.sense(locationManager.getLastKnownLocation(locationMode));
 		Log.d(DEBUG_SENSOR_MANAGER, "state: onResume()");
 		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity started ***  ");
