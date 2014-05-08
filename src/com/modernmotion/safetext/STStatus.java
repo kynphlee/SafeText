@@ -1,6 +1,12 @@
 package com.modernmotion.safetext;
 
 import static com.modernmotion.safetext.util.STConstants.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -38,23 +44,36 @@ public class STStatus extends Activity {
 	private static final String SERVICE_STATE = "serviceState";
 	private static final String RECEIVER_STATE = "receiverState";
 
+	private Map<String, ArrayList<Bundle>> smsCache;
+
 	private boolean receiverRegistered = false;
 	private IntentFilter smsIntentFilter = new IntentFilter(
 			"SMS_MESSAGE_RECEIVED");
 
+	// Debug switch
+	private boolean debug = true;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.st_status);
+		if (debug) {
+			setContentView(R.layout.st_status_debug);
+		} else {
+			setContentView(R.layout.st_status);
+		}
 
+		smsCache = new HashMap<String, ArrayList<Bundle>>();
 		serviceSwitch = (ImageView) findViewById(R.id.st_service_switch);
 		activationIndicator = (TextView) findViewById(R.id.st_service_status_indicator);
-		speedValue = (TextView) findViewById(R.id.st_speed);
-		lonValue = (TextView) findViewById(R.id.lon_value);
-		latValue = (TextView) findViewById(R.id.lat_value);
 
-		lonValue.setText("0");
-		latValue.setText("0");
+		if (debug) {
+			speedValue = (TextView) findViewById(R.id.st_speed);
+			lonValue = (TextView) findViewById(R.id.lon_value);
+			latValue = (TextView) findViewById(R.id.lat_value);
+
+			lonValue.setText("0");
+			latValue.setText("0");
+		}
 
 		// GPS
 		locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -86,14 +105,15 @@ public class STStatus extends Activity {
 		@Override
 		public void onLocationChanged(Location location) {
 			if (location != null && location.hasSpeed()) {
-				float speed = location.getSpeed() * 0.44704f;
+				float speed = location.getSpeed() * 2.23694f;
 
-				Log.i(TAG,
-						"Current speed: " + speed + ", time: "
+				Log.i(TAG, "Current speed: " + speed + ", time: "
 								+ location.getTime());
-				speedValue.setText(String.valueOf(speed));
-				latValue.setText(String.valueOf(location.getLatitude()));
-				lonValue.setText(String.valueOf(location.getLongitude()));
+				if (debug) {
+					speedValue.setText(String.valueOf(speed));
+					latValue.setText(String.valueOf(location.getLatitude()));
+					lonValue.setText(String.valueOf(location.getLongitude()));
+				}
 
 				smsMonitor.sense(location);
 			}
@@ -122,11 +142,11 @@ public class STStatus extends Activity {
 		}
 
 		private float speedToMPH(Location location) {
-			return (location.getSpeed() * 0.44704f);
+			return (location.getSpeed() * 2.23694f);
 		}
-		
+
 		private float speedToMPH(float speed) {
-			return (speed * 0.44704f);
+			return (speed * 2.23694f);
 		}
 
 		private double longToDecimal(long longVal) {
@@ -176,10 +196,9 @@ public class STStatus extends Activity {
 		private class ActiveState extends State {
 			private int durationLimit = THREE_MINUTES;
 			private double duration = 0;
-			
-			private float lowerLimit = speedToMPH(LOWER_THRESHOLD);
+			private boolean oneMinuteSet = false;
 			private float upperLimit = speedToMPH(UPPER_THRESHOLD);
-			
+
 			public ActiveState(SMSMonitor monitor) {
 				super(monitor);
 			}
@@ -192,14 +211,20 @@ public class STStatus extends Activity {
 				if (duration >= durationLimit) {
 					float speed = speedToMPH(location);
 					if (speed >= upperLimit) {
+						// Continue blocking SMS messages
 						durationLimit = THREE_MINUTES;
 						startTime = longToDecimal(System.currentTimeMillis());
-					} else if (speed < upperLimit) {
-						durationLimit = ONE_MINUTE;
-						startTime = longToDecimal(System.currentTimeMillis());
-					} else if (speed <= lowerLimit){
-						setSMSCaptureState(false);
-						monitor.setState(getPassiveState());
+					} else if (speed == 0) {
+						// Delay
+						if (!oneMinuteSet) {
+							oneMinuteSet = true;
+							durationLimit = THREE_MINUTES;
+							startTime = longToDecimal(System.currentTimeMillis());
+						} else {
+							oneMinuteSet = false;
+							setSMSCaptureState(false);
+							monitor.setState(getPassiveState());
+						}
 					}
 				}
 			}
@@ -207,28 +232,15 @@ public class STStatus extends Activity {
 	}
 
 	/*
-	 * // ------------ LEGACY START ------------------------ 
-	 * // long timeStamp = event.timestamp; 
-	 * // double accelSum = 0; 
-	 * // 
-	 * // while ((event.timestamp - timeStamp) < 180) { 
-	 * // 	double accelDiff = acceleration - accelSum; 
-	 * // 	accelSum += accelDiff; 
-	 * // } 
-	 * // 
-	 * // 
-	 * // The Manual Switch Logic 
-	 * // if (!isEnabled()) { 
-	 * // 	setServiceState(true); 
-	 * // } else { 
-	 * // if (isEnabled()) { 
-	 * // 	setServiceState(false); 
-	 * // } 
-	 * // }
+	 * // ------------ LEGACY START ------------------------ // long timeStamp =
+	 * event.timestamp; // double accelSum = 0; // // while ((event.timestamp -
+	 * timeStamp) < 180) { // double accelDiff = acceleration - accelSum; //
+	 * accelSum += accelDiff; // } // // // The Manual Switch Logic // if
+	 * (!isEnabled()) { // setServiceState(true); // } else { // if
+	 * (isEnabled()) { // setServiceState(false); // } // }
 	 * 
-	 * // Update global variables 
-	 * // accel_prev = acceleration; 
-	 * // ------------ LEGACY END ------------------------
+	 * // Update global variables // accel_prev = acceleration; // ------------
+	 * LEGACY END ------------------------
 	 */
 
 	private BroadcastReceiver smsIntentReceiver = new BroadcastReceiver() {
@@ -242,12 +254,12 @@ public class STStatus extends Activity {
 
 				Log.i("SMSTAG", "sms status captured!");
 
-				ContentValues values = new ContentValues();
-				values.put("address", sender);
-				values.put("body", message);
-				getContentResolver().insert(Uri.parse("content://sms/sent"),
-						values);
-				Log.i("SMSTAG", "sms written to content provider!");
+				// Write to the sms content provider
+				//ContentValues values = new ContentValues();
+				//values.put("address", sender);
+				//values.put("body", message);
+				//getContentResolver().insert(Uri.parse("content://sms/sent"), values);
+				//Log.i("SMSTAG", "sms written to content provider!");
 			}
 		}
 	};

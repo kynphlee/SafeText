@@ -15,7 +15,6 @@ import android.os.Process;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
-import android.widget.Toast;
 
 public class SMSCaptureService extends Service {
 	private static final String ACTION_START_CAPTURE = "com.modernmotion.safetext.action.START_CAPTURE";
@@ -24,6 +23,7 @@ public class SMSCaptureService extends Service {
 	
 	private Looper serviceLooper;
 	private SMSCaptureHandler serviceHandler;
+	private SMSBuffer smsBuffer;
 
 	private int smsCount = 0;
 
@@ -35,6 +35,7 @@ public class SMSCaptureService extends Service {
 				"SafeTextServiceThread", Process.THREAD_PRIORITY_BACKGROUND);
 		stServiceThread.start();
 
+		smsBuffer = new SMSBuffer(this);
 		serviceLooper = stServiceThread.getLooper();
 		serviceHandler = new SMSCaptureHandler(serviceLooper);
 	}
@@ -49,6 +50,10 @@ public class SMSCaptureService extends Service {
 			} else if (action.equals(ACTION_STOP_CAPTURE)) {
 				unregisterReceiver(smsReceiver);
 				receiverRegistered = false;
+				
+				if (smsBuffer.count() > 0) {
+					smsBuffer.dumpSmsMessages();
+				}
 				stopSelf();
 			}
 		}
@@ -81,6 +86,7 @@ public class SMSCaptureService extends Service {
 			String message = null;
 			SmsMessage[] messages = null;
 			
+			// Extract the SMS message from the PDU
 			if (action.equals(SMS_RECEIVED_ACTION)) {
 				Bundle bundle = intent.getExtras();
 				if (bundle != null) {
@@ -102,17 +108,24 @@ public class SMSCaptureService extends Service {
 			smsReceivedIntent.putExtra("smsCount", smsCount);
 			smsReceivedIntent.putExtra("sender", sender);
 			smsReceivedIntent.putExtra("message", message);
+			
+			// Add message to the smsCache
+			Object[] pdus = (Object[]) intent.getExtras().get("pdus");
+			SmsMessage sms = SmsMessage.createFromPdu((byte[]) pdus[0]);
+			smsBuffer.add(sms);
+			
+			// Send SMS to STStatus for debug
 			sendBroadcast(smsReceivedIntent);
 			Log.i("SMSTAG", "sms captured!");
 			
-			// send an auto-reply to the sender
-			SmsManager sms = SmsManager.getDefault();
+			// Send an auto-reply to the sender
+			SmsManager smsManager = SmsManager.getDefault();
 			String autoReply = getResources().getString(R.string.st_service_active_message);
-			sms.sendTextMessage(messages[0].getOriginatingAddress(), null, autoReply, null, null);
+			smsManager.sendTextMessage(messages[0].getOriginatingAddress(), null, autoReply, null, null);
 			Log.i("SMSTAG", "sms auto-reply sent!");
 		}
 	};
-
+	
 	public static void startSMSCapture(Context context) {
 		Intent intent = new Intent(context, SMSCaptureService.class);
 		intent.setAction(ACTION_START_CAPTURE);
