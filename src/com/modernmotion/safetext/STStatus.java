@@ -124,12 +124,14 @@ public class STStatus extends Activity {
 
 		private State passiveState;
 		private State activeState;
+		private State delayState;
 		private State monitorState;
 		protected double startTime;
 
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
 			passiveState = new PassiveState(this);
+			delayState = new DelayState(this);
 			monitorState = passiveState;
 		}
 
@@ -168,6 +170,10 @@ public class STStatus extends Activity {
 			protected State getActiveState() {
 				return activeState;
 			}
+			
+			protected State getDelayState() {
+				return delayState;
+			}
 
 			protected abstract void run(final Location location);
 		}
@@ -196,7 +202,6 @@ public class STStatus extends Activity {
 		private class ActiveState extends State {
 			private int durationLimit = THREE_MINUTES;
 			private double duration = 0;
-			private boolean oneMinuteSet = false;
 			private float upperLimit = speedToMPH(UPPER_THRESHOLD);
 
 			public ActiveState(SMSMonitor monitor) {
@@ -215,16 +220,37 @@ public class STStatus extends Activity {
 						durationLimit = THREE_MINUTES;
 						startTime = longToDecimal(System.currentTimeMillis());
 					} else if (speed == 0) {
-						// Delay
-						if (!oneMinuteSet) {
-							oneMinuteSet = true;
-							durationLimit = THREE_MINUTES;
-							startTime = longToDecimal(System.currentTimeMillis());
-						} else {
-							oneMinuteSet = false;
-							setSMSCaptureState(false);
-							monitor.setState(getPassiveState());
-						}
+						// The Goal
+						startTime = longToDecimal(System.currentTimeMillis());
+						monitor.setState(getDelayState());
+					}
+				}
+			}
+		}
+		
+		private class DelayState extends State {
+			private int durationLimit = ONE_MINUTE;
+			private double duration = 0;
+			private float upperLimit = speedToMPH(UPPER_THRESHOLD);
+			
+			public DelayState(SMSMonitor monitor) {
+				super(monitor);
+			}
+
+			@Override
+			protected void run(Location location) {
+				double currentTimeDouble = longToDecimal(System.currentTimeMillis());
+				duration = (currentTimeDouble - startTime) * MS2S;
+				
+				if (duration >= durationLimit) {
+					float speed = speedToMPH(location);
+					
+					if (speed >= upperLimit) {
+						startTime = longToDecimal(System.currentTimeMillis());
+						monitor.setState(getActiveState());
+					} else if (speed == 0) {
+						setSMSCaptureState(false);
+						monitor.setState(getPassiveState());
 					}
 				}
 			}
