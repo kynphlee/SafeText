@@ -1,6 +1,7 @@
 package com.modernmotion.safetext;
 
 import static com.modernmotion.safetext.util.STConstants.*;
+import static com.modernmotion.safetext.util.MonitorParameters.MonitorState;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,8 +20,11 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class STStatus extends Activity {
 
@@ -44,14 +48,12 @@ public class STStatus extends Activity {
 	private static final String SERVICE_STATE = "serviceState";
 	private static final String RECEIVER_STATE = "receiverState";
 
-	private Map<String, ArrayList<Bundle>> smsCache;
-
 	private boolean receiverRegistered = false;
 	private IntentFilter smsIntentFilter = new IntentFilter(
 			"SMS_MESSAGE_RECEIVED");
 
 	// Debug switch
-	private boolean debug = true;
+	private boolean debug = false;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +64,6 @@ public class STStatus extends Activity {
 			setContentView(R.layout.st_status);
 		}
 
-		smsCache = new HashMap<String, ArrayList<Bundle>>();
 		serviceSwitch = (ImageView) findViewById(R.id.st_service_switch);
 		activationIndicator = (TextView) findViewById(R.id.st_service_status_indicator);
 
@@ -107,7 +108,8 @@ public class STStatus extends Activity {
 			if (location != null && location.hasSpeed()) {
 				float speed = location.getSpeed() * 2.23694f;
 
-				Log.i(TAG, "Current speed: " + speed + ", time: "
+				Log.i(TAG,
+						"Current speed: " + speed + ", time: "
 								+ location.getTime());
 				if (debug) {
 					speedValue.setText(String.valueOf(speed));
@@ -170,15 +172,22 @@ public class STStatus extends Activity {
 			protected State getActiveState() {
 				return activeState;
 			}
-			
+
 			protected State getDelayState() {
 				return delayState;
+			}
+
+			protected double getDuration() {
+				double currentTimeDouble = longToDecimal(System
+						.currentTimeMillis());
+				return (currentTimeDouble - startTime) * MS2S;
 			}
 
 			protected abstract void run(final Location location);
 		}
 
 		private class PassiveState extends State {
+			private float threshold = speedToMPH(THRESHOLD);
 
 			public PassiveState(SMSMonitor monitor) {
 				super(monitor);
@@ -191,7 +200,7 @@ public class STStatus extends Activity {
 				}
 
 				float speed = speedToMPH(location);
-				if (speed >= UPPER_THRESHOLD) {
+				if (speed >= threshold) {
 					setSMSCaptureState(true);
 					startTime = longToDecimal(System.currentTimeMillis());
 					monitor.setState(getActiveState());
@@ -202,7 +211,7 @@ public class STStatus extends Activity {
 		private class ActiveState extends State {
 			private int durationLimit = THREE_MINUTES;
 			private double duration = 0;
-			private float upperLimit = speedToMPH(UPPER_THRESHOLD);
+			private float threshold = speedToMPH(THRESHOLD);
 
 			public ActiveState(SMSMonitor monitor) {
 				super(monitor);
@@ -210,42 +219,36 @@ public class STStatus extends Activity {
 
 			@Override
 			protected void run(Location location) {
-				double currentTimeDouble = longToDecimal(System.currentTimeMillis());
-				duration = (currentTimeDouble - startTime) * MS2S;
-
+				duration = getDuration();
 				if (duration >= durationLimit) {
 					float speed = speedToMPH(location);
-					if (speed >= upperLimit) {
+					if (speed >= threshold) {
 						// Continue blocking SMS messages
-						durationLimit = THREE_MINUTES;
 						startTime = longToDecimal(System.currentTimeMillis());
 					} else if (speed == 0) {
-						// The Goal
 						startTime = longToDecimal(System.currentTimeMillis());
 						monitor.setState(getDelayState());
 					}
 				}
 			}
 		}
-		
+
 		private class DelayState extends State {
 			private int durationLimit = ONE_MINUTE;
 			private double duration = 0;
-			private float upperLimit = speedToMPH(UPPER_THRESHOLD);
-			
+			private float threshold = speedToMPH(THRESHOLD);
+
 			public DelayState(SMSMonitor monitor) {
 				super(monitor);
 			}
 
 			@Override
 			protected void run(Location location) {
-				double currentTimeDouble = longToDecimal(System.currentTimeMillis());
-				duration = (currentTimeDouble - startTime) * MS2S;
-				
+				duration = getDuration();
 				if (duration >= durationLimit) {
 					float speed = speedToMPH(location);
-					
-					if (speed >= upperLimit) {
+
+					if (speed >= threshold) {
 						startTime = longToDecimal(System.currentTimeMillis());
 						monitor.setState(getActiveState());
 					} else if (speed == 0) {
@@ -274,18 +277,26 @@ public class STStatus extends Activity {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			String action = intent.getAction();
-			if (action.equals("SMS_MESSAGE_RECEIVED")) {
+			if (action.equals(ST_SMS_MESSAGE_RECEIVED)) {
 				String message = intent.getExtras().getString("message");
 				String sender = intent.getExtras().getString("sender");
 
 				Log.i("SMSTAG", "sms status captured!");
 
 				// Write to the sms content provider
-				//ContentValues values = new ContentValues();
-				//values.put("address", sender);
-				//values.put("body", message);
-				//getContentResolver().insert(Uri.parse("content://sms/sent"), values);
-				//Log.i("SMSTAG", "sms written to content provider!");
+				// ContentValues values = new ContentValues();
+				// values.put("address", sender);
+				// values.put("body", message);
+				// getContentResolver().insert(Uri.parse("content://sms/sent"),
+				// values);
+				// Log.i("SMSTAG", "sms written to content provider!");
+			} else if (action.equals(ST_PASSIVE_STATE)) {
+				int messagesDumped = intent.getExtras()
+						.getInt("messagesDumped");
+				Toast.makeText(
+						context,
+						"Messages written to content provider: "
+								+ messagesDumped, Toast.LENGTH_SHORT).show();
 			}
 		}
 	};

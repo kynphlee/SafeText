@@ -40,14 +40,18 @@ public class SMSBuffer extends HashMap<String, ArrayList<SmsMessage>> {
 		return size;
 	}
 	
-	public void dumpSmsMessages() {
+	public int dumpSmsMessages() {
+		int mCount = 0;
 		for(ArrayList<SmsMessage> senders: this.values()) {
 			for(SmsMessage message: senders) {
 				final ContentValues values = new ContentValues();
 				values.put("address", message.getOriginatingAddress());
 				values.put("body", message.getMessageBody().toString());
 				mContext.getContentResolver().insert(Uri.parse("content://sms/inbox"), values);
+				mCount++;
 			}
 		}
+		
+		return mCount;
 	}
 }

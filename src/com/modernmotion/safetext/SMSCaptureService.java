@@ -16,10 +16,9 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
 
+import static com.modernmotion.safetext.util.STConstants.*;
+
 public class SMSCaptureService extends Service {
-	private static final String ACTION_START_CAPTURE = "com.modernmotion.safetext.action.START_CAPTURE";
-	private static final String ACTION_STOP_CAPTURE = "com.modernmotion.safetext.action.STOP_CAPTURE";
-	public static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
 	
 	private Looper serviceLooper;
 	private SMSCaptureHandler serviceHandler;
@@ -44,15 +43,20 @@ public class SMSCaptureService extends Service {
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		if (intent != null) {
 			String action = intent.getAction();
-			if (action.equals(ACTION_START_CAPTURE)) {
+			if (action.equals(ST_START_CAPTURE)) {
 				Message message = serviceHandler.obtainMessage();
 				serviceHandler.sendMessage(message);
-			} else if (action.equals(ACTION_STOP_CAPTURE)) {
+			} else if (action.equals(ST_STOP_CAPTURE)) {
 				unregisterReceiver(smsReceiver);
 				receiverRegistered = false;
 				
 				if (smsBuffer.count() > 0) {
-					smsBuffer.dumpSmsMessages();
+					final int messagesDumped = smsBuffer.dumpSmsMessages();
+					
+					Intent smsReceivedIntent = new Intent();
+					smsReceivedIntent.setAction(ST_PASSIVE_STATE);
+					smsReceivedIntent.putExtra("messagesDumped", messagesDumped);
+					sendBroadcast(smsReceivedIntent);
 				}
 				stopSelf();
 			}
@@ -104,7 +108,7 @@ public class SMSCaptureService extends Service {
 			// Block this sms message from propagating to other sms applications
 			abortBroadcast();
 			Intent smsReceivedIntent = new Intent();
-			smsReceivedIntent.setAction("SMS_MESSAGE_RECEIVED");
+			smsReceivedIntent.setAction(ST_SMS_MESSAGE_RECEIVED);
 			smsReceivedIntent.putExtra("smsCount", smsCount);
 			smsReceivedIntent.putExtra("sender", sender);
 			smsReceivedIntent.putExtra("message", message);
@@ -128,13 +132,13 @@ public class SMSCaptureService extends Service {
 	
 	public static void startSMSCapture(Context context) {
 		Intent intent = new Intent(context, SMSCaptureService.class);
-		intent.setAction(ACTION_START_CAPTURE);
+		intent.setAction(ST_START_CAPTURE);
 		context.startService(intent);
 	}
 
 	public static void stopSMSCapture(Context context) {
 		Intent intent = new Intent(context, SMSCaptureService.class);
-		intent.setAction(ACTION_STOP_CAPTURE);
+		intent.setAction(ST_STOP_CAPTURE);
 		context.startService(intent);
 	}
 
