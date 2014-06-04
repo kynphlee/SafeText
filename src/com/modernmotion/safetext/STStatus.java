@@ -1,23 +1,14 @@
 package com.modernmotion.safetext;
 
 import static com.modernmotion.safetext.util.STConstants.*;
-import static com.modernmotion.safetext.util.MonitorParameters.MonitorState;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import android.app.Activity;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -65,6 +56,8 @@ public class STStatus extends Activity {
 		}
 
 		serviceSwitch = (ImageView) findViewById(R.id.st_service_switch);
+		serviceSwitch.setOnClickListener(manualOverrideListener);
+
 		activationIndicator = (TextView) findViewById(R.id.st_service_status_indicator);
 
 		if (debug) {
@@ -82,6 +75,17 @@ public class STStatus extends Activity {
 		// Monitor
 		smsMonitor = new SMSMonitor();
 	}
+
+	private OnClickListener manualOverrideListener = new OnClickListener() {
+
+		@Override
+		public void onClick(View v) {
+			// TODO Auto-generated method stub
+			if (smsMonitor.currentState() == MonitorStateTransition.PASSIVE) {
+				smsMonitor.override();
+			}
+		}
+	};
 
 	private LocationListener locationListener = new LocationListener() {
 
@@ -121,6 +125,22 @@ public class STStatus extends Activity {
 			}
 		}
 	};
+	
+
+	private enum MonitorStateTransition {
+
+		PASSIVE("Passive"), ACTIVE("Active"), DELAY("Delay");
+
+		private final String state;
+
+		private MonitorStateTransition(final String newState) {
+			state = newState;
+		}
+
+		public String getMonitorState() {
+			return state;
+		}
+	}
 
 	private class SMSMonitor {
 
@@ -128,13 +148,40 @@ public class STStatus extends Activity {
 		private State activeState;
 		private State delayState;
 		private State monitorState;
+		private MonitorStateTransition mState;
 		protected double startTime;
 
 		public SMSMonitor() {
 			activeState = new ActiveState(this);
 			passiveState = new PassiveState(this);
 			delayState = new DelayState(this);
-			monitorState = passiveState;
+			setState(MonitorStateTransition.PASSIVE);
+			//monitorState = passiveState;
+		}
+
+		public void setState(MonitorStateTransition newState) {
+			switch (newState.ordinal()) {
+			case 0: // Passive
+				mState = newState;
+				monitorState = passiveState;
+				break;
+			case 1: // Active
+				mState = newState;
+				monitorState = activeState;
+				break;
+			case 2: // Delay
+				mState = newState;
+				monitorState = delayState;
+				break;
+			}
+		}
+
+		public MonitorStateTransition currentState() {
+			return mState;
+		}
+		
+		public void override() {
+			((PassiveState)monitorState).setOverride(true);
 		}
 
 		public void setState(State newState) {
@@ -178,8 +225,8 @@ public class STStatus extends Activity {
 			}
 
 			protected double getDuration() {
-				double currentTimeDouble = longToDecimal(System
-						.currentTimeMillis());
+				double currentTimeDouble = 
+						longToDecimal(System.currentTimeMillis());
 				return (currentTimeDouble - startTime) * MS2S;
 			}
 
@@ -188,11 +235,17 @@ public class STStatus extends Activity {
 
 		private class PassiveState extends State {
 			private float threshold = speedToMPH(THRESHOLD);
+			private boolean override;
 
 			public PassiveState(SMSMonitor monitor) {
 				super(monitor);
+				override = false;
 			}
 
+			private void setOverride(boolean newValue) {
+				override = newValue;
+			}
+			
 			@Override
 			protected void run(final Location location) {
 				if (location == null || !location.hasSpeed()) {
@@ -201,9 +254,17 @@ public class STStatus extends Activity {
 
 				float speed = speedToMPH(location);
 				if (speed >= threshold) {
-					setSMSCaptureState(true);
-					startTime = longToDecimal(System.currentTimeMillis());
-					monitor.setState(getActiveState());
+					// Manual Override
+					if (override) {
+						if (speed < threshold || speed == 0.0f) {
+							override = false;
+						}
+					} else {
+						setSMSCaptureState(true);
+						startTime = longToDecimal(System.currentTimeMillis());
+						//monitor.setState(getActiveState());
+						monitor.setState(MonitorStateTransition.ACTIVE);
+					}
 				}
 			}
 		}
