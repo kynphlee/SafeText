@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
+    
     <ImageView
         android:id="@+id/st_service_switch"
         android:layout_width="128dp"
@@ -25,5 +26,15 @@
         android:layout_below="@id/st_service_status"
         android:layout_centerHorizontal="true"
         android:text="@string/st_service_status_disabled" />
+
+    <TextView
+        android:id="@+id/manual_override"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/st_service_switch"
+        android:layout_centerHorizontal="true"
+        android:visibility="invisible"
+        android:textColor="@color/red"
+        android:text="@string/manual_override" />
 
 </RelativeLayout>

@@ -1,9 +1,16 @@
 package com.modernmotion.safetext;
 
 import static com.modernmotion.safetext.util.STConstants.*;
+
+import com.modernmotion.safetext.ManualOverrideDialog.ManualOverrideInterface;
+
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.location.Location;
@@ -11,19 +18,22 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class STStatus extends Activity {
+public class STStatus extends Activity implements ManualOverrideInterface{
 
 	private final static String TAG = "DEBUG (Location): ";
 
 	private boolean serviceEnabled;
 	private ImageView serviceSwitch;
 	private TextView activationIndicator;
+	private TextView manualOverrideIndicator;
+	private ManualOverrideDialog overrideDialog;
 
 	private TextView speedValue;
 	private TextView lonValue;
@@ -80,12 +90,18 @@ public class STStatus extends Activity {
 
 		@Override
 		public void onClick(View v) {
-			// TODO Auto-generated method stub
 			if (smsMonitor.currentState() == MonitorStateTransition.PASSIVE) {
-				smsMonitor.override();
+				overrideDialog = new ManualOverrideDialog();
+				overrideDialog.show(getFragmentManager(), "manualOverride");
+				
 			}
 		}
 	};
+	
+	@Override
+	public void onOverrideStateChage(DialogFragment dialog) {
+		smsMonitor.override();
+	}
 
 	private LocationListener locationListener = new LocationListener() {
 
@@ -125,7 +141,6 @@ public class STStatus extends Activity {
 			}
 		}
 	};
-	
 
 	private enum MonitorStateTransition {
 
@@ -156,7 +171,6 @@ public class STStatus extends Activity {
 			passiveState = new PassiveState(this);
 			delayState = new DelayState(this);
 			setState(MonitorStateTransition.PASSIVE);
-			//monitorState = passiveState;
 		}
 
 		public void setState(MonitorStateTransition newState) {
@@ -179,9 +193,22 @@ public class STStatus extends Activity {
 		public MonitorStateTransition currentState() {
 			return mState;
 		}
-		
+
 		public void override() {
-			((PassiveState)monitorState).setOverride(true);
+			if (mState == MonitorStateTransition.PASSIVE) {
+				PassiveState state = (PassiveState) monitorState;
+				if (!state.isOverridden()) {
+					manualOverrideIndicator = (TextView) findViewById(R.id.manual_override);
+					manualOverrideIndicator
+							.setVisibility(android.view.View.VISIBLE);
+					state.setOverride(true);
+				} else {
+					manualOverrideIndicator = (TextView) findViewById(R.id.manual_override);
+					manualOverrideIndicator
+							.setVisibility(android.view.View.INVISIBLE);
+					state.setOverride(false);
+				}
+			}
 		}
 
 		public void setState(State newState) {
@@ -225,8 +252,8 @@ public class STStatus extends Activity {
 			}
 
 			protected double getDuration() {
-				double currentTimeDouble = 
-						longToDecimal(System.currentTimeMillis());
+				double currentTimeDouble = longToDecimal(System
+						.currentTimeMillis());
 				return (currentTimeDouble - startTime) * MS2S;
 			}
 
@@ -245,7 +272,11 @@ public class STStatus extends Activity {
 			private void setOverride(boolean newValue) {
 				override = newValue;
 			}
-			
+
+			private boolean isOverridden() {
+				return override;
+			}
+
 			@Override
 			protected void run(final Location location) {
 				if (location == null || !location.hasSpeed()) {
@@ -262,7 +293,7 @@ public class STStatus extends Activity {
 					} else {
 						setSMSCaptureState(true);
 						startTime = longToDecimal(System.currentTimeMillis());
-						//monitor.setState(getActiveState());
+						// monitor.setState(getActiveState());
 						monitor.setState(MonitorStateTransition.ACTIVE);
 					}
 				}

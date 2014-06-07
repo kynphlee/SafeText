@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    
+    <string name="pin_text">Enter your PIN for manual override</string>
+    
     <string name="app_name">SafeText</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
@@ -25,5 +30,5 @@
     <string name="st_google_location_services_disconnected">Google Location Services disconnected.</string>
     <string name="title_activity_stutils">STUtils</string>
     <string name="st_speed">Speed(mph):</string>
-
+    <string name="manual_override">Manual Override</string> 
 </resources>

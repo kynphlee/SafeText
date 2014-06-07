@@ -15,7 +15,6 @@ import android.os.Process;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
-
 import static com.modernmotion.safetext.util.STConstants.*;
 
 public class SMSCaptureService extends Service {
@@ -124,8 +123,8 @@ public class SMSCaptureService extends Service {
 			
 			// Send an auto-reply to the sender
 			SmsManager smsManager = SmsManager.getDefault();
-			String autoReply = getResources().getString(R.string.st_service_active_message);
-			smsManager.sendTextMessage(messages[0].getOriginatingAddress(), null, autoReply, null, null);
+			//String autoReply = getResources().getString(R.string.st_service_active_message);
+			//smsManager.sendTextMessage(messages[0].getOriginatingAddress(), null, autoReply, null, null);
 			Log.i("SMSTAG", "sms auto-reply sent!");
 		}
 	};
