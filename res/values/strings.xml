@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Manual Override -->
+    <string name="manual_override">Manual Override</string> 
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     
+    <!-- PIN Dialog -->
     <string name="pin_text">Enter your PIN for manual override</string>
+    
+    <!-- GPS Provider Status -->
+    <string name="gps_available">Provider Available.</string>
+    <string name="gps_temporary">Provider Temporarily Unavailable.</string>
+    <string name="gps_out_of_service">Provider Out Of Service.</string>
     
     <string name="app_name">SafeText</string>
     <string name="action_settings">Settings</string>
@@ -30,5 +38,5 @@
     <string name="st_google_location_services_disconnected">Google Location Services disconnected.</string>
     <string name="title_activity_stutils">STUtils</string>
     <string name="st_speed">Speed(mph):</string>
-    <string name="manual_override">Manual Override</string> 
+    
 </resources>

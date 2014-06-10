@@ -16,6 +16,7 @@ import android.content.IntentFilter;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.location.LocationProvider;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -104,22 +105,57 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 	}
 
 	private LocationListener locationListener = new LocationListener() {
+		
+		class StatusRunnable implements Runnable {
+
+			private String _message;
+			
+			public StatusRunnable(String message) {
+				_message = message;
+			}
+			@Override
+			public void run() {
+				Toast t = Toast.makeText(getApplicationContext(), _message, Toast.LENGTH_SHORT);
+				t.show();
+			}
+			
+			
+		}
 
 		@Override
 		public void onStatusChanged(String provider, int status, Bundle extras) {
-			// TODO Auto-generated method stub
+			StatusRunnable providerStatus = null;
+			
+			switch(status) {
+			case LocationProvider.AVAILABLE:
+				providerStatus = new StatusRunnable("Provider Available.");
+				break;
+			case LocationProvider.TEMPORARILY_UNAVAILABLE:
+				providerStatus = new StatusRunnable("Provider Temporarily Unavailable.");
+				break;
+			case LocationProvider.OUT_OF_SERVICE:
+				providerStatus = new StatusRunnable("Provider Out Of Service.");
+				break;
+			}
 
+			//getCurrentFocus().post(providerStatus);
 		}
 
 		@Override
 		public void onProviderEnabled(String provider) {
 			// TODO Auto-generated method stub
-
+			StatusRunnable providerStatus = new StatusRunnable("Provider Enabled");
+			getParent().runOnUiThread(providerStatus);
 		}
 
 		@Override
 		public void onProviderDisabled(String provider) {
-			// TODO Auto-generated method stub
+			/* The user disabled the GPS provider. 
+			 * Set the monitor to Active state until 
+			 * the user re-enables the GPS provider.getCurrentFocus().post(providerStatus);
+			 * */
+			StatusRunnable providerStatus = new StatusRunnable("Provider Disabled");
+			getParent().runOnUiThread(providerStatus);
 
 		}
 
@@ -196,7 +232,7 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 
 		public void override() {
 			if (mState == MonitorStateTransition.PASSIVE) {
-				PassiveState state = (PassiveState) monitorState;
+				State state = (PassiveState) monitorState;
 				if (!state.isOverridden()) {
 					manualOverrideIndicator = (TextView) findViewById(R.id.manual_override);
 					manualOverrideIndicator
@@ -211,6 +247,7 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 			}
 		}
 
+		@Deprecated
 		public void setState(State newState) {
 			monitorState = newState;
 		}
@@ -234,6 +271,7 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 		abstract class State {
 
 			protected SMSMonitor monitor;
+			protected boolean override;
 
 			public State(SMSMonitor monitor) {
 				this.monitor = monitor;
@@ -251,6 +289,14 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 				return delayState;
 			}
 
+			protected void setOverride(boolean newValue) {
+				override = newValue;
+			}
+			
+			protected boolean isOverridden() {
+				return override;
+			}
+			
 			protected double getDuration() {
 				double currentTimeDouble = longToDecimal(System
 						.currentTimeMillis());
@@ -262,19 +308,10 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 
 		private class PassiveState extends State {
 			private float threshold = speedToMPH(THRESHOLD);
-			private boolean override;
 
 			public PassiveState(SMSMonitor monitor) {
 				super(monitor);
-				override = false;
-			}
-
-			private void setOverride(boolean newValue) {
-				override = newValue;
-			}
-
-			private boolean isOverridden() {
-				return override;
+				setOverride(false);
 			}
 
 			@Override
@@ -286,14 +323,13 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 				float speed = speedToMPH(location);
 				if (speed >= threshold) {
 					// Manual Override
-					if (override) {
+					if (isOverridden()) {
 						if (speed < threshold || speed == 0.0f) {
-							override = false;
+							setOverride(false);
 						}
 					} else {
 						setSMSCaptureState(true);
 						startTime = longToDecimal(System.currentTimeMillis());
-						// monitor.setState(getActiveState());
 						monitor.setState(MonitorStateTransition.ACTIVE);
 					}
 				}
@@ -374,26 +410,16 @@ public class STStatus extends Activity implements ManualOverrideInterface{
 				String sender = intent.getExtras().getString("sender");
 
 				Log.i("SMSTAG", "sms status captured!");
-
-				// Write to the sms content provider
-				// ContentValues values = new ContentValues();
-				// values.put("address", sender);
-				// values.put("body", message);
-				// getContentResolver().insert(Uri.parse("content://sms/sent"),
-				// values);
-				// Log.i("SMSTAG", "sms written to content provider!");
 			} else if (action.equals(ST_PASSIVE_STATE)) {
-				int messagesDumped = intent.getExtras()
-						.getInt("messagesDumped");
-				Toast.makeText(
-						context,
+				int messagesDumped = intent.getExtras().getInt("messagesDumped");
+				Toast.makeText(context,
 						"Messages written to content provider: "
 								+ messagesDumped, Toast.LENGTH_SHORT).show();
 			}
 		}
 	};
 
-	private void setSMSCaptureState(boolean state) {
+	protected void setSMSCaptureState(boolean state) {
 		if (state) {
 			// Start service
 			serviceSwitch.setImageResource(R.drawable.st_logo_orange);
