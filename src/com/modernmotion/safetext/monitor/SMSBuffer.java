@@ -1,4 +1,4 @@
-package com.modernmotion.safetext;
+package com.modernmotion.safetext.monitor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,9 +10,6 @@ import android.telephony.SmsMessage;
 
 public class SMSBuffer extends HashMap<String, ArrayList<SmsMessage>> {
 	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private Context mContext;
 	

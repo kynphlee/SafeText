@@ -1,4 +1,4 @@
-package com.modernmotion.safetext;
+package com.modernmotion.safetext.monitor;
 
 import android.app.Service;
 import android.content.BroadcastReceiver;

@@ -58,7 +58,7 @@
         </activity>
         
         <service
-            android:name="com.modernmotion.safetext.SMSCaptureService"
+            android:name="com.modernmotion.safetext.monitor.SMSCaptureService"
             android:enabled="true"
             android:exported="false" >
         </service>
