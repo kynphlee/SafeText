@@ -1,6 +1,7 @@
 package com.modernmotion.safetext;
 
 import static com.modernmotion.safetext.util.STConstants.*;
+import static com.modernmotion.safetext.util.STUtils.*;
 
 import com.modernmotion.safetext.monitor.DefaultSMSMonitor;
 import com.modernmotion.safetext.monitor.PassiveModeOverrideDialog;
@@ -10,7 +11,6 @@ import com.modernmotion.safetext.monitor.PassiveModeOverrideDialog.PassiveModeOv
 import com.modernmotion.safetext.monitor.SMSMonitor.SMSMonitorListener;
 
 import android.app.Activity;
-import android.app.DialogFragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -59,6 +59,7 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
 		if (debug) {
 			setContentView(R.layout.st_status_debug);
 		} else {
@@ -216,7 +217,7 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 	@Override
 	public void onLocationChanged(Location location) {
 		if (location != null && location.hasSpeed()) {
-			float speed = location.getSpeed() * 2.23694f;
+			int speed = speedToMPH(location);
 
 			Log.i(TAG,
 					"Current speed: " + speed + ", time: " + location.getTime());
