@@ -228,8 +228,6 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 		Toast gpsEnabled = Toast.makeText(this, "GPS Provider Enabled",
 				Toast.LENGTH_SHORT);
 		gpsEnabled.show();
-
-		//smsMonitor.setOverride(MonitorState.ACTIVE, false);
 	}
 
 	@Override
@@ -238,15 +236,6 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 		Toast gpsDisabled = 
 				Toast.makeText(this, "GPS Provider Disabled",Toast.LENGTH_SHORT);
 		gpsDisabled.show();
-
-		/*MonitorState state = smsMonitor.currentState();
-		if (state == MonitorState.PASSIVE
-				|| state == MonitorState.DELAY) {
-			smsMonitor.setOverride(MonitorState.ACTIVE, true);
-			smsMonitor.transitionTo(MonitorState.ACTIVE);
-		} else {
-			smsMonitor.setOverride(MonitorState.ACTIVE, true);
-		}*/
 	}
 	/* GPS Monitoring End */
     /*********************** Move to STMonitorService **********************************/
@@ -283,14 +272,14 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
         serviceEnabled = savedInstanceState.getBoolean(SERVICE_STATE);
         receiverRegistered = savedInstanceState.getBoolean(RECEIVER_STATE);
         if (serviceEnabled) {
-            serviceSwitch.setImageResource(R.drawable.st_logo_orange);
+            serviceSwitch.setImageResource(R.drawable.st_active);
             activationIndicator.setText(R.string.st_service_status_enabled);
             if (!receiverRegistered) {
                 registerReceiver(smsIntentReceiver, smsIntentFilter);
                 receiverRegistered = true;
             }
         } else {
-            serviceSwitch.setImageResource(R.drawable.st_logo_grey);
+            serviceSwitch.setImageResource(R.drawable.st_passive);
             activationIndicator.setText(R.string.st_service_status_disabled);
         }
     }
@@ -298,7 +287,7 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 	@Override
 	public void onCaptureStart() {
 		// Active Mode
-		serviceSwitch.setImageResource(R.drawable.st_logo_orange);
+		serviceSwitch.setImageResource(R.drawable.st_active);
 		activationIndicator.setText(R.string.st_service_status_enabled);
 		
 		// Register intent receiver
@@ -310,7 +299,7 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 	@Override
 	public void onCaptureStop() {
 		// Passive Mode
-		serviceSwitch.setImageResource(R.drawable.st_logo_grey);
+		serviceSwitch.setImageResource(R.drawable.st_passive);
 		activationIndicator.setText(R.string.st_service_status_disabled);
 		
 		// Unregister intent receiver

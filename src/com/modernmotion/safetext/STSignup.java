@@ -1,41 +1,67 @@
 package com.modernmotion.safetext;
 
-import android.os.Bundle;
 import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
-import android.widget.CheckBox;
+import android.view.View.OnClickListener;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.Toast;
+
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class STSignup extends Activity {
 
-	EditText firstName, lastName, emailAddress;
-	CheckBox tac;
-	Button btnActivate;
+	EditText pin;
+	ImageView btnActivate;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.st_signup);
+
+        btnActivate = (ImageView) findViewById(R.id.activate_button);
+        btnActivate.setOnClickListener(activateListener);
+
 	}
 
-	public void tacReview(View view) {
-		firstName = (EditText) findViewById(R.id.first_name);
-		lastName = (EditText) findViewById(R.id.last_name);
-		emailAddress = (EditText) findViewById(R.id.email_address);
-		tac = (CheckBox) findViewById(R.id.TaC);
+    private OnClickListener activateListener = new OnClickListener() {
+        @Override
+        public void onClick(View v) {
 
-		if (!(firstName.getEditableText().toString().isEmpty() || 
-				lastName.getEditableText().toString().isEmpty() || 
-				emailAddress.getEditableText().toString().isEmpty())
-				&& tac.isChecked()) {
+            pin = (EditText) findViewById(R.id.pin_field);
+            String pinValue = pin.getText().toString();
 
-			btnActivate = (Button) findViewById(R.id.activate_button);
-			btnActivate.setEnabled(true);
-		} else {
+            if (pinValue == null
+                    || "".equals(pinValue)
+                    || "0000".equals(pinValue)) {
+                Toast badPin = Toast.makeText(getApplicationContext(), "Please enter a valid pin.", Toast.LENGTH_SHORT);
+                badPin.show();
+            } else {
+                try {
+                    String fileName = getResources().getString(R.string.safetext_pin_file);
+                    FileOutputStream fout = openFileOutput(fileName, Context.MODE_PRIVATE);
 
-			btnActivate = (Button) findViewById(R.id.activate_button);
-			btnActivate.setEnabled(false);
-		}
-	}
+                    StringBuilder file = new StringBuilder();
+                    file.append("-pin:");
+                    file.append(pinValue);
+                    fout.write(file.toString().getBytes());
+                    fout.close();
+
+                } catch (FileNotFoundException ex) {
+                    ex.printStackTrace();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+
+                Intent statusIntent = new Intent(STSignup.this, STStatus.class);
+                startActivity(statusIntent);
+                finish();
+            }
+        }
+    };
 }

@@ -1,11 +1,15 @@
 package com.modernmotion.safetext;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
-import java.lang.Thread;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class STSplash extends Activity {
 
@@ -18,8 +22,42 @@ public class STSplash extends Activity {
 	}
 
 	private boolean init() {
-		return false;
+        byte[] pinBytes = new byte[1024];
+        try {
+            String fileName = getResources().getString(R.string.safetext_pin_file);
+            FileInputStream fin = openFileInput(fileName);
+            fin.read(pinBytes);
+            String pin = new String(pinBytes).trim();
+
+            String pinValue = pin.substring(5, pin.length());
+            if ("".equals(pinValue) || pinValue == null) {
+                return true;
+            }
+        } catch (FileNotFoundException ex) {
+            createDefaultPin();
+            return true;
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        return false;
 	}
+
+    private void createDefaultPin() {
+        try {
+            String fileName = getResources().getString(R.string.safetext_pin_file);
+            FileOutputStream fout = openFileOutput(fileName, Context.MODE_PRIVATE);
+
+            StringBuilder file = new StringBuilder();
+            file.append("-pin:");
+            file.append("0000");
+            fout.write(file.toString().getBytes());
+            fout.close();
+        } catch (FileNotFoundException ex) {
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
 
 	private class InitTask extends AsyncTask<Void, Void, Boolean> {
 

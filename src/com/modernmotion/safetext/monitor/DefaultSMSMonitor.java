@@ -216,11 +216,6 @@ public class DefaultSMSMonitor implements SMSMonitor {
 		}
 
 		@Override
-		protected void onOverrideState() {
-
-		}
-
-		@Override
 		protected void process(Location location) {
 			duration = getDuration();
 			if (duration >= durationLimit) {

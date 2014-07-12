@@ -27,12 +27,12 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/st_logo_orange"
+        android:icon="@drawable/st_passive"
         android:label="@string/app_name" >
         <activity
             android:name="com.modernmotion.safetext.STSplash"
             android:label="@string/app_name"
-            android:theme="@style/AppThemeSplash" >
+            android:theme="@style/AppTheme" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

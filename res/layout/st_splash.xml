@@ -6,14 +6,23 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
+    android:background="@drawable/safetext_background"
     tools:context=".STSplash">
 
     <ImageView
-        android:id="@+id/st_logo_orange"
+        android:id="@+id/st_logo"
         android:layout_centerInParent="true"
-        android:layout_width="512dp"
-        android:layout_height="512dp"
+        android:layout_width="256dp"
+        android:layout_height="256dp"
         android:contentDescription="@string/st_logo"
-        android:src="@drawable/st_logo_orange" />
+        android:src="@drawable/st_active" />
+
+    <TextView
+        android:id="@+id/st_splash_text"
+        style="@style/UIText"
+        android:text="@string/app_name"
+        android:textSize="32dp"
+        android:layout_below="@id/st_logo"
+        android:layout_centerHorizontal="true"/>
 
 </RelativeLayout>

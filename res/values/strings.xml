@@ -8,6 +8,7 @@
     
     <!-- PIN Dialog -->
     <string name="pin_text">Enter your PIN for manual override</string>
+    <string name="safetext_pin_file">st_pin</string>
     
     <!-- GPS Provider Status -->
     <string name="gps_available">Provider Available.</string>
@@ -16,15 +17,13 @@
     
     <string name="app_name">SafeText</string>
     <string name="action_settings">Settings</string>
-    <string name="hello_world">Hello world!</string>
     <string name="title_activity_stsignup">SafeText Registration</string>
     <string name="safetext_summary">This mobile app monitors and changes text message privileges based on the speed at which a person is travelling.</string>
-    <string name="firstname">First Name</string>
-    <string name="lastname">Last Name</string>
-    <string name="email">Email Address</string>
-    <string name="tac">I agree to the Terms and Conditions</string>
+    <string name="pin">Enter your pin</string>
     <string name="activate">Activate</string>
     <string name="st_logo">SafeText Logo</string>
+    <string name="st_welcome">Welcome to SafeText.</string>
+    <string name="st_signin_text">Please sign in to get started!</string>
     <string name="title_activity_ststatus">SafeText Status</string>
     <string name="st_service_status">Activation Status:</string>
     <string name="st_service_status_enabled">Enabled</string>
