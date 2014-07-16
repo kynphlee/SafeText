@@ -4,7 +4,6 @@
     android:layout_height="match_parent"
     android:background="@drawable/safetext_background">
 
-
     <ImageView
         android:id="@+id/st_service_switch"
         android:layout_width="256dp"

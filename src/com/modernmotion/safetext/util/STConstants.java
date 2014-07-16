@@ -15,6 +15,7 @@ public class STConstants {
 	public static final String ST_START_CAPTURE = "com.modernmotion.safetext.action.START_CAPTURE";
 	public static final String ST_STOP_CAPTURE = "com.modernmotion.safetext.action.STOP_CAPTURE";
 	public static final String ST_SMS_MESSAGE_RECEIVED = "com.modernmotion.safetext.action.SMS_MESSAGE_RECEIVED";
+    public static final String ST_GPS_HEARTBEAT = "com.modernmotion.safetext.action.GPS_HEARTBEAT";
 	public static final String ST_PASSIVE_STATE = "com.modernmotion.safetext.monitor.state.ST_PASSIVE_STATE";
 	public static final String ST_ACTIVE_STATE = "com.modernmotion.safetext.monitor.state.ST_ACTIVE_STATE";
 	public static final String ST_DELAY_STATE = "com.modernmotion.safetext.monitor.state.ST_DELAY_STATE";

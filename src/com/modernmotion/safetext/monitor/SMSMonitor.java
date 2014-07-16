@@ -9,7 +9,6 @@ public interface SMSMonitor {
 	public interface MonitorListener {
 		public void onCaptureStart();
 		public void onCaptureStop();
-        public void onStateChanged();
 	}
 
 	public void setMonitorActivity(Activity context);

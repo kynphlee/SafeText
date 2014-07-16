@@ -13,16 +13,14 @@
 
     <TextView
         android:id="@+id/st_service_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:layout_below="@id/st_service_switch"
         android:layout_centerHorizontal="true"
         android:text="@string/st_service_status" />
 
     <TextView
         android:id="@+id/st_service_status_indicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:layout_below="@id/st_service_status"
         android:layout_centerHorizontal="true"
         android:text="@string/st_service_status_disabled" />
@@ -39,8 +37,7 @@
 
     <TextView
         android:id="@+id/st_speed_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:layout_marginTop="27dp"
         android:text="@string/st_speed"
         android:textAppearance="?android:attr/textAppearanceSmall"
@@ -49,8 +46,7 @@
 
     <TextView
         android:id="@+id/st_speed"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:text="0"
         android:layout_alignTop="@+id/st_speed_label"
         android:layout_alignLeft="@+id/lat_value"
@@ -58,8 +54,7 @@
 
     <TextView
         android:id="@+id/latitude"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:text="Latitude:"
         android:layout_below="@+id/st_speed_label"
         android:layout_alignLeft="@+id/st_speed_label"
@@ -67,8 +62,7 @@
 
     <TextView
         android:id="@+id/longitude"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:text="Longitude:"
         android:layout_below="@+id/latitude"
         android:layout_alignLeft="@+id/latitude"
@@ -76,16 +70,14 @@
 
     <TextView
         android:id="@+id/lat_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:text="lat-value"
         android:layout_below="@+id/st_speed"
         android:layout_toLeftOf="@+id/st_service_status_indicator"/>
 
     <TextView
         android:id="@+id/lon_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        style="@style/UIText"
         android:text="lon-value"
         android:layout_below="@+id/lat_value"
         android:layout_toLeftOf="@+id/st_service_status_indicator"/>

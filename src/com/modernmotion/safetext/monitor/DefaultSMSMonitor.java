@@ -2,6 +2,7 @@ package com.modernmotion.safetext.monitor;
 
 import android.app.Activity;
 import android.location.Location;
+import android.util.Log;
 import com.modernmotion.safetext.MonitorState;
 import com.modernmotion.safetext.STStatus;
 
@@ -162,6 +163,7 @@ public class DefaultSMSMonitor implements SMSMonitor {
 	private class PassiveState extends State {
 		private int threshold = speedToMPH(THRESHOLD);
 		private boolean _override = false;
+        private final String TAG = this.getClass().getSimpleName();
 
 		public PassiveState(DefaultSMSMonitor monitor) {
 			super(monitor);
@@ -192,7 +194,8 @@ public class DefaultSMSMonitor implements SMSMonitor {
 
 		@Override
 		protected void process(final Location location) {
-			int speed = speedToMPH(location);
+            Log.d(TAG, "State: Passive");
+            int speed = speedToMPH(location);
 			if (speed >= threshold) {
 				// Speed threshold reached. Transition to Active state.
                 if (monitorActivitySet) {
@@ -210,6 +213,7 @@ public class DefaultSMSMonitor implements SMSMonitor {
 		private int durationLimit = THREE_MINUTES;
 		private double duration = 0;
 		private int threshold = speedToMPH(THRESHOLD);
+        private final String TAG = this.getClass().getSimpleName();
 
 		public ActiveState(DefaultSMSMonitor monitor) {
 			super(monitor);
@@ -217,6 +221,7 @@ public class DefaultSMSMonitor implements SMSMonitor {
 
 		@Override
 		protected void process(Location location) {
+            Log.d(TAG, "State: Active");
 			duration = getDuration();
 			if (duration >= durationLimit) {
 				int speed = speedToMPH(location);
@@ -235,6 +240,7 @@ public class DefaultSMSMonitor implements SMSMonitor {
 		private int durationLimit = ONE_MINUTE;
 		private double duration = 0;
 		private int threshold = speedToMPH(THRESHOLD);
+        private final String TAG = this.getClass().getSimpleName();
 
 		public DelayState(DefaultSMSMonitor monitor) {
 			super(monitor);
@@ -242,6 +248,7 @@ public class DefaultSMSMonitor implements SMSMonitor {
 
 		@Override
 		protected void process(Location location) {
+            Log.d(TAG, "State: Delay");
 			duration = getDuration();
 			if (duration >= durationLimit) {
 				int speed = speedToMPH(location);
