@@ -1,6 +1,7 @@
 package com.modernmotion.safetext.monitor;
 
 import android.app.Activity;
+import android.app.Service;
 import android.location.Location;
 import com.modernmotion.safetext.MonitorState;
 
@@ -12,6 +13,8 @@ public interface SMSMonitor {
 	}
 
 	public void setMonitorActivity(Activity context);
+
+    public void setMonitorService(Service context);
 	
 	public void transitionTo(MonitorState newState);
 

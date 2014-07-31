@@ -10,6 +10,7 @@ import android.os.Process;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Log;
+import com.modernmotion.safetext.R;
 
 import static com.modernmotion.safetext.util.STConstants.*;
 
@@ -21,8 +22,7 @@ public class SMSCaptureService extends Service {
 	private SMSBuffer smsBuffer;
 
 	private int smsCount = 0;
-
-	private boolean receiverRegistered = false;
+	private boolean smsReceiverRegistered = false;
 
 	@Override
 	public void onCreate() {
@@ -40,13 +40,13 @@ public class SMSCaptureService extends Service {
 		if (intent != null) {
 			String action = intent.getAction();
 			if (action.equals(ST_START_CAPTURE)) {
-				if (!receiverRegistered) {
+				if (!smsReceiverRegistered) {
 					Message message = smsCaptureHandler.obtainMessage();
 					smsCaptureHandler.sendMessage(message);
 				}
 			} else if (action.equals(ST_STOP_CAPTURE)) {
 				unregisterReceiver(smsReceiver);
-				receiverRegistered = false;
+				smsReceiverRegistered = false;
 
 				if (smsBuffer.count() > 0) {
 					final int messagesDumped = smsBuffer.dumpSmsMessages();
@@ -76,7 +76,7 @@ public class SMSCaptureService extends Service {
 			smsFilter.setPriority(Integer.MAX_VALUE);
 
 			registerReceiver(smsReceiver, smsFilter);
-			receiverRegistered = true;
+			smsReceiverRegistered = true;
 		}
 	}
 
@@ -107,27 +107,25 @@ public class SMSCaptureService extends Service {
 
 			// Block this sms message from propagating to other sms applications
 			abortBroadcast();
-			Intent smsReceivedIntent = new Intent();
+
+            // Send SMS to STStatus for debug
+            Intent smsReceivedIntent = new Intent();
 			smsReceivedIntent.setAction(ST_SMS_MESSAGE_RECEIVED);
 			smsReceivedIntent.putExtra("smsCount", smsCount);
 			smsReceivedIntent.putExtra("sender", sender);
 			smsReceivedIntent.putExtra("message", message);
+            sendBroadcast(smsReceivedIntent);
+            Log.i("SMSTAG", "sms captured!");
 
 			// Add message to the smsCache
 			Object[] pdus = (Object[]) intent.getExtras().get("pdus");
 			SmsMessage sms = SmsMessage.createFromPdu((byte[]) pdus[0]);
 			smsBuffer.add(sms);
 
-			// Send SMS to STStatus for debug
-			sendBroadcast(smsReceivedIntent);
-			Log.i("SMSTAG", "sms captured!");
-
 			// Send an auto-reply to the sender
 			SmsManager smsManager = SmsManager.getDefault();
-			// String autoReply =
-			// getResources().getString(R.string.st_service_active_message);
-			// smsManager.sendTextMessage(messages[0].getOriginatingAddress(),
-			// null, autoReply, null, null);
+			String autoReply = getResources().getString(R.string.st_service_active_message);
+			smsManager.sendTextMessage(messages[0].getOriginatingAddress(), null, autoReply, null, null);
 			Log.i("SMSTAG", "sms auto-reply sent!");
 		}
 	};
@@ -146,7 +144,7 @@ public class SMSCaptureService extends Service {
 
 	@Override
 	public void onDestroy() {
-		if (receiverRegistered) {
+		if (smsReceiverRegistered) {
 			unregisterReceiver(smsReceiver);
 		}
 	}

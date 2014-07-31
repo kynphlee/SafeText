@@ -1,6 +1,7 @@
 package com.modernmotion.safetext.monitor;
 
 import android.app.Activity;
+import android.app.Service;
 import android.location.Location;
 import android.util.Log;
 import com.modernmotion.safetext.MonitorState;
@@ -13,6 +14,7 @@ import static com.modernmotion.safetext.util.STUtils.speedToMPH;
 public class DefaultSMSMonitor implements SMSMonitor {
 
 	private STStatus mActivity;
+    private STMonitorService mService;
     private boolean monitorActivitySet = false;
 	private State passiveState;
 	private State activeState;
@@ -47,8 +49,12 @@ public class DefaultSMSMonitor implements SMSMonitor {
         }
 	}
 
+    @Override
+    public void setMonitorService(Service context) {
+        mService = (STMonitorService) context;
+    }
 
-	@Override
+    @Override
 	public void transitionTo(MonitorState newState) {
 		switch (newState.ordinal()) {
 		case 0: // Passive
@@ -172,6 +178,7 @@ public class DefaultSMSMonitor implements SMSMonitor {
 
 		@Override
 		protected void override(final Location location) {
+            Log.d(TAG, "State: Passive-Override");
 			int speed = speedToMPH(location);
 			if (!_override) {
 				if (speed < threshold) {
@@ -203,7 +210,6 @@ public class DefaultSMSMonitor implements SMSMonitor {
                 }
 				SMSCaptureService.startSMSCapture(mActivity);
 				startTime = longToDecimal(System.currentTimeMillis());
-
 				monitor.transitionTo(MonitorState.ACTIVE);
 			}
 		}
@@ -214,12 +220,24 @@ public class DefaultSMSMonitor implements SMSMonitor {
 		private double duration = 0;
 		private int threshold = speedToMPH(THRESHOLD);
         private final String TAG = this.getClass().getSimpleName();
+        private boolean _override = false;
 
 		public ActiveState(DefaultSMSMonitor monitor) {
 			super(monitor);
 		}
 
-		@Override
+        @Override
+        protected void onOverrideState() {
+            SMSCaptureService.startSMSCapture(mService);
+            Log.w(TAG, "GPS Override Enabled!!!");
+        }
+
+        @Override
+        protected void override(Location location) {
+            Log.w(TAG, "GPS Override Enabled!!!");
+        }
+
+        @Override
 		protected void process(Location location) {
             Log.d(TAG, "State: Active");
 			duration = getDuration();

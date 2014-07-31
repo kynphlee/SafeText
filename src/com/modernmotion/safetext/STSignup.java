@@ -16,7 +16,6 @@ import java.io.IOException;
 
 public class STSignup extends Activity {
 
-	EditText pin;
 	ImageView btnActivate;
 
 	@Override
@@ -33,7 +32,7 @@ public class STSignup extends Activity {
         @Override
         public void onClick(View v) {
 
-            pin = (EditText) findViewById(R.id.pin_field);
+            EditText pin = (EditText) findViewById(R.id.pin_field);
             String pinValue = pin.getText().toString();
 
             if (pinValue == null
@@ -43,7 +42,7 @@ public class STSignup extends Activity {
                 badPin.show();
             } else {
                 try {
-                    String fileName = getResources().getString(R.string.safetext_pin_file);
+                    String fileName = getString(R.string.filename);
                     FileOutputStream fout = openFileOutput(fileName, Context.MODE_PRIVATE);
 
                     StringBuilder file = new StringBuilder();

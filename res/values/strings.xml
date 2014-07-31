@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Signup -->
+    <string name="filename">st_pin</string>
+
     <!-- Manual Override -->
     <string name="manual_override">Manual Override</string> 
     <string name="ok">OK</string>
+    <string name="overrideEnable">Enable</string>
+    <string name="overrideDisable">Disable</string>
     <string name="cancel">Cancel</string>
-    
+    <string name="invalid_pin">Please enter the correct PIN</string>
+
     <!-- PIN Dialog -->
     <string name="pin_text">Enter your PIN for manual override</string>
     <string name="safetext_pin_file">st_pin</string>
@@ -29,7 +35,7 @@
     <string name="st_service_status_enabled">Enabled</string>
     <string name="st_service_status_disabled">Disabled</string>
     <string name="st_sms_count_label">SMS Count: </string>
-    <string name="st_service_active_message">I\'m driving right now. I\'ll text you later.\n\nBrought to you by SafeText.</string>
+    <string name="st_service_active_message">I\'m driving right now. I\'ll text you later.</string>
     <string name="st_sms_sender_label_text">Sender: </string>
     <string name="st_sms_message_label_text">Message: </string>
     <string name="st_google_location_services_available">Google Location Services are available.</string>

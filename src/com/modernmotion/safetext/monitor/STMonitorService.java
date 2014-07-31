@@ -14,7 +14,7 @@ import com.modernmotion.safetext.MonitorState;
 import static com.modernmotion.safetext.util.STConstants.DEBUG_STRING;
 import static com.modernmotion.safetext.util.STConstants.ST_GPS_HEARTBEAT;
 
-public class STMonitorService extends Service/* implements LocationListener*/ {
+public class STMonitorService extends Service {
 	private SMSMonitor monitor = null;
 	private Looper serviceLooper;
     private MonitorServiceHandler serviceHandler;
@@ -36,6 +36,7 @@ public class STMonitorService extends Service/* implements LocationListener*/ {
 		stServiceThread.start();
 		serviceLooper = stServiceThread.getLooper();
         serviceHandler = new MonitorServiceHandler(serviceLooper);
+        Log.d(TAG, "STMonitorService has been created.");
 	}
 
     public class MonitorBinder extends Binder {
@@ -48,29 +49,32 @@ public class STMonitorService extends Service/* implements LocationListener*/ {
         public MonitorServiceHandler(Looper looper) {
             super(looper);
 
-            Log.d(TAG, "Handler created.");
             // Monitor
             monitor = new DefaultSMSMonitor();
+            monitor.setMonitorService(STMonitorService.this);
         }
 
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
+            Log.d(TAG, "MonitorServiceHandler called.");
 
             if (!monitorServiceStarted) {
                 // GPS
                 locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
                 locationManager.requestLocationUpdates(locationMode, 0, 0, this);
-                Log.d(TAG, "Handler called.");
                 monitorServiceStarted = true;
+                Log.d(TAG, "STMonitorService has started");
+            } else {
+                Log.d(TAG, "STMonitorService was already running.");
             }
         }
 
         @Override
         public void onLocationChanged(Location location) {
             if (location != null && location.hasSpeed()) {
-                Log.d(TAG, "Location: " + location.getLatitude() + ", " + location.getLongitude());
-                Log.d(TAG, "Speed: " + location.getSpeed());
+                Log.d(TAG, "Speed: " + location.getSpeed() +
+                        " Location: " + location.getLatitude() + ", " + location.getLongitude());
 
                 if (monitorActivityBound) {
                     Intent heartbeatIntent = new Intent();
@@ -89,20 +93,28 @@ public class STMonitorService extends Service/* implements LocationListener*/ {
 
         }
 
+        /****************************** GPS Override start *****************************************/
         @Override
         public void onProviderEnabled(String provider) {
-
+            monitor.setOverride(MonitorState.ACTIVE, false);
         }
 
         @Override
         public void onProviderDisabled(String provider) {
-
+            MonitorState state = monitor.currentState();
+            if (state.equals(MonitorState.PASSIVE)
+                    || state.equals(MonitorState.DELAY)) {
+                monitor.setOverride(MonitorState.ACTIVE, true);
+                monitor.transitionTo(MonitorState.ACTIVE);
+            } else {
+                monitor.setOverride(MonitorState.ACTIVE, true);
+            }
         }
+        /****************************** GPS Override end *****************************************/
     }
 	
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(DEBUG_STRING, "Service has started");
         Message msg = serviceHandler.obtainMessage();
         serviceHandler.handleMessage(msg);
 
@@ -131,6 +143,7 @@ public class STMonitorService extends Service/* implements LocationListener*/ {
     @Override
     public void onRebind(Intent intent) {
         super.onRebind(intent);
+        monitorActivityBound = true;
     }
 
     /* STMonitorService Interface methods */

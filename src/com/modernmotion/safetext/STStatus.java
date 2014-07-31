@@ -21,9 +21,12 @@ import static com.modernmotion.safetext.util.STConstants.*;
 public class STStatus extends Activity implements PassiveModeOverrideInterface,
 		MonitorListener {
 
-	private final static String TAG = "DEBUG (Location): ";
+	private final static String TAG = STStatus.class.getSimpleName();
 
 	private boolean serviceEnabled;
+    private boolean receiverRegistered;
+    private boolean heartbeatReceiverRegistered;
+
 	private ImageView serviceSwitch;
 	private TextView activationIndicator;
 	private TextView manualOverrideIndicator;
@@ -68,51 +71,29 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 
         Intent initializer = new Intent(this, STMonitorService.class);
         startService(initializer);
+        Log.d(TAG, "Initializing STMonitorService.");
 	}
-
-    private ServiceConnection monitorConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            MonitorBinder binder = (MonitorBinder) service;
-            monitorService = binder.getService();
-            monitorService.getMonitor().setMonitorActivity(STStatus.this);
-            if (debug) {
-                IntentFilter heartbeatFilter = new IntentFilter();
-                heartbeatFilter.addAction(ST_GPS_HEARTBEAT);
-                registerReceiver(monitorServiceReceiver, heartbeatFilter);
-            }
-            isBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            monitorService.getMonitor().setMonitorActivity(null);
-            isBound = false;
-        }
-    };
 
     @Override
     protected void onStart() {
         super.onStart();
         Intent bindIntent = new Intent(this, STMonitorService.class);
         bindService(bindIntent, monitorConnection, Context.BIND_AUTO_CREATE);
+        Log.d(TAG, "Sending bind intent to STMonitorService...");
     }
 
     @Override
 	protected void onResume() {
 		super.onResume();
-        if(isBound) {
-
-            Log.d(DEBUG_SENSOR_MANAGER, "state: onResume()");
-            Log.d(DEBUG_SENSOR_MANAGER, "  *** activity started ***  ");
-        }
+        Log.d(TAG, "state: onResume()");
+        Log.d(TAG, "  *** activity started ***  ");
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity pause ***  ");
-		Log.d(DEBUG_SENSOR_MANAGER, "state: onPause()");
+		Log.d(TAG, "  *** activity pause ***  ");
+		Log.d(TAG, "state: onPause()");
 	}
 
     @Override
@@ -123,19 +104,55 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
             unbindService(monitorConnection);
             isBound = false;
         }
+
+        if (receiverRegistered) {
+            unregisterReceiver(smsIntentReceiver);
+            receiverRegistered = false;
+        }
+
+        if(heartbeatReceiverRegistered) {
+            unregisterReceiver(heartbeatReceiver);
+            heartbeatReceiverRegistered = false;
+        }
+        Log.d(TAG, "  *** activity stopped ***  ");
+        Log.d(TAG, "state: onStop()");
     }
 
     @Override
 	protected void onDestroy() {
 		super.onDestroy();
-		Log.d(DEBUG_SENSOR_MANAGER, "  *** activity ended ***  ");
-		Log.d(DEBUG_SENSOR_MANAGER, "state: onDestroy()");
+		Log.d(TAG, "  *** activity ended ***  ");
+		Log.d(TAG, "state: onDestroy()");
 	}
 
+    private ServiceConnection monitorConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MonitorBinder binder = (MonitorBinder) service;
+            monitorService = binder.getService();
+            monitorService.getMonitor().setMonitorActivity(STStatus.this);
+
+            if (debug) {
+                IntentFilter heartbeatFilter = new IntentFilter();
+                heartbeatFilter.addAction(ST_GPS_HEARTBEAT);
+                registerReceiver(heartbeatReceiver, heartbeatFilter);
+                heartbeatReceiverRegistered = true;
+            }
+            isBound = true;
+            if (monitorService.getMonitor().isOverridden(MonitorState.ACTIVE)) {
+                onCaptureStart();
+            }
+            Log.d(STStatus.TAG, "Bound to STMonitorService.");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            monitorService.getMonitor().setMonitorActivity(null);
+            isBound = false;
+        }
+    };
+
 	/************************ Passive Mode Override Start *********************************/
-    /*TODO: PassiveOverrideListener
-     * Refactor onClick() to use STMonitorService's override method
-    */
 	private OnClickListener passiveOverrideListener = new OnClickListener() {
 		@Override
 		public void onClick(View v) {
@@ -168,9 +185,11 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
                     .isOverridden(MonitorState.PASSIVE);
 
             if (isOverridden) {
+                serviceSwitch.setImageResource(R.drawable.st_override);
                 manualOverrideIndicator = (TextView) findViewById(R.id.manual_override);
                 manualOverrideIndicator.setVisibility(android.view.View.VISIBLE);
             } else {
+                serviceSwitch.setImageResource(R.drawable.st_passive);
                 manualOverrideIndicator = (TextView) findViewById(R.id.manual_override);
                 manualOverrideIndicator.setVisibility(android.view.View.INVISIBLE);
             }
@@ -186,6 +205,8 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
             String action = intent.getAction();
             if (action.equals(ST_SMS_MESSAGE_RECEIVED)) {
                 Log.i("SMSTAG", "sms status captured!");
+                Toast.makeText(context,
+                        "Caught SMS! ", Toast.LENGTH_SHORT).show();
             } else if (action.equals(ST_PASSIVE_STATE)) {
                 int messagesDumped = intent.getExtras().getInt("messagesDumped");
                 Toast.makeText(context,
@@ -195,7 +216,7 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
         }
     };
 
-    private BroadcastReceiver monitorServiceReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver heartbeatReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (isBound) {
@@ -213,7 +234,7 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean(SERVICE_STATE, serviceEnabled);
-        //outState.putBoolean(RECEIVER_STATE, receiverRegistered);
+        outState.putBoolean(RECEIVER_STATE, receiverRegistered);
         super.onSaveInstanceState(outState);
     }
 
@@ -222,7 +243,7 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
         super.onRestoreInstanceState(savedInstanceState);
 
         serviceEnabled = savedInstanceState.getBoolean(SERVICE_STATE);
-        //receiverRegistered = savedInstanceState.getBoolean(RECEIVER_STATE);
+        receiverRegistered = savedInstanceState.getBoolean(RECEIVER_STATE);
         if (serviceEnabled) {
             serviceSwitch.setImageResource(R.drawable.st_active);
             activationIndicator.setText(R.string.st_service_status_enabled);
@@ -237,11 +258,12 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 		// Active Mode
 		serviceSwitch.setImageResource(R.drawable.st_active);
 		activationIndicator.setText(R.string.st_service_status_enabled);
+        serviceEnabled = true;
 		
 		// Register intent receiver
-		serviceEnabled = true;
-//		registerReceiver(smsIntentReceiver, smsIntentFilter);
-//		receiverRegistered = true;
+        IntentFilter smsIntentFilter = new IntentFilter(ST_SMS_MESSAGE_RECEIVED);
+		registerReceiver(smsIntentReceiver, smsIntentFilter);
+		receiverRegistered = true;
 	}
 
 	@Override
@@ -249,10 +271,12 @@ public class STStatus extends Activity implements PassiveModeOverrideInterface,
 		// Passive Mode
 		serviceSwitch.setImageResource(R.drawable.st_passive);
 		activationIndicator.setText(R.string.st_service_status_disabled);
+        serviceEnabled = false;
 		
 		// Unregister intent receiver
-		serviceEnabled = false;
-		unregisterReceiver(smsIntentReceiver);
-//		receiverRegistered = false;
+        if (receiverRegistered) {
+            unregisterReceiver(smsIntentReceiver);
+            receiverRegistered = false;
+        }
 	}
 }
